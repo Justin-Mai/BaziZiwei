@@ -57,3 +57,15 @@ baziziwei/
 *   **[lunar-javascript](https://github.com/6tail/lunar-javascript)**：目前最好用的开源公农历干支转换和黄历数据分析库。
 *   **[iztro](https://github.com/SylarLong/iztro)**：强大且轻量级的紫微斗数排盘算法引擎。
 *   **[marked.js](https://github.com/markedjs/marked)**：用于在浏览器前端优雅地渲染 AI 生成的 Markdown 批命书。
+
+---
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=Justin-Mai%2FBaziZiwei&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Justin-Mai/BaziZiwei&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Justin-Mai/BaziZiwei&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Justin-Mai/BaziZiwei&type=date&legend=top-left" />
+ </picture>
+</a>
