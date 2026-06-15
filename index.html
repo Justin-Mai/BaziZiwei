@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>玄机阁 - 八字与紫微斗数命理排盘系统</title>
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- 引入三方历法与紫微斗数库 -->
+  <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/iztro/dist/iztro.min.js"></script>
+  <!-- 引入 marked 用于解析 AI 返回的 Markdown 报告 -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+
+  <!-- 动态 Canvas 星空背景 -->
+  <canvas id="starfield"></canvas>
+  <div class="nebula-bg"></div>
+
+  <div class="app-container">
+    
+    <!-- 头部标题 -->
+    <header>
+      <h1>玄机阁</h1>
+      <p>天人合一 · 八字子平 · 紫微斗数</p>
+    </header>
+
+    <!-- 输入资料面板 -->
+    <section class="glass-panel input-section">
+      <!-- 第一行：基本信息 -->
+      <div class="form-row">
+        <!-- 姓名 -->
+        <div class="input-group flex-1">
+          <label for="userName">缘主姓名</label>
+          <input type="text" id="userName" placeholder="请输入您的姓名" value="诸葛乾坤">
+        </div>
+        
+        <!-- 性别 -->
+        <div class="input-group flex-1">
+          <label for="gender">缘主性别</label>
+          <select id="gender">
+            <option value="男">乾造 (男)</option>
+            <option value="女">坤造 (女)</option>
+          </select>
+        </div>
+
+        <!-- 历法切换 -->
+        <div class="input-group flex-1">
+          <label>历法类型</label>
+          <div class="calendar-switch">
+            <button type="button" class="switch-btn active" id="btnSolar">公历 (阳历)</button>
+            <button type="button" class="switch-btn" id="btnLunar">农历 (阴历)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第二行：日期与具体时间 -->
+      <div class="form-row">
+        <!-- 日期选择容器 (占flex: 2) -->
+        <div class="date-input-container" style="flex: 2;">
+          <!-- 阳历日期选择 -->
+          <div class="input-group" id="solarInputGroup" style="width: 100%;">
+            <label for="solarDate">出生日期 (公历)</label>
+            <input type="date" id="solarDate" value="1995-10-10">
+          </div>
+
+          <!-- 阴历输入组合 (当选择农历时显示) -->
+          <div id="lunarInputGroup" style="display: none; width: 100%; gap: 10px;">
+            <div class="input-group" style="flex: 2;">
+              <label for="lunarYear">农历年 (干支)</label>
+              <select id="lunarYear"></select>
+            </div>
+            <div class="input-group" style="flex: 1.2;">
+              <label for="lunarMonth">月份</label>
+              <select id="lunarMonth"></select>
+            </div>
+            <div class="input-group" style="flex: 1.2;">
+              <label for="lunarDay">日期</label>
+              <select id="lunarDay"></select>
+            </div>
+            <div class="input-group" style="flex: 1; min-width: 65px;">
+              <label for="lunarLeap">闰月</label>
+              <select id="lunarLeap">
+                <option value="false">否</option>
+                <option value="true">是</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 具体出生时间 (占flex: 1) -->
+        <div class="input-group" style="flex: 1;">
+          <label for="birthHour">出生具体时间 (北京时间)</label>
+          <div class="time-select-row">
+            <select id="birthHour"></select>
+            <span class="time-label">时</span>
+            <select id="birthMinute"></select>
+            <span class="time-label">分</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第三行：地点与经度 -->
+      <div class="form-row">
+        <!-- 出生省份与城市/区 (占flex: 2) -->
+        <div class="input-group" style="flex: 2;">
+          <label for="birthProvince">出生地点 (省份与城市/区)</label>
+          <div style="display: flex; gap: 12px; width: 100%;">
+            <select id="birthProvince" style="flex: 1;">
+              <option value="">选择省份</option>
+            </select>
+            <select id="birthCity" style="flex: 1;">
+              <option value="">选择地市</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 经度输入框 (占flex: 1) -->
+        <div class="input-group" style="flex: 1;">
+          <label for="customLongitude">实测经度 (东经°)</label>
+          <input type="number" id="customLongitude" step="0.01" min="0" max="180" value="120.0" placeholder="东经°">
+        </div>
+      </div>
+
+      <div style="margin-top: 30px;">
+        <button type="button" class="btn-submit" id="btnCalculate">开启天机排盘</button>
+      </div>
+    </section>
+
+    <!-- 结果排盘展示区 -->
+    <section class="result-section" id="resultSection">
+      
+      <!-- 真太阳时校准信息显示 -->
+      <div class="time-calibration-panel" id="timeCalibrationPanel" style="display: none;">
+        <div class="calibration-title">☯ 真太阳时校准成功</div>
+        <div class="calibration-details">
+          <div>输入北京时间：<span id="inputStdTime">--</span></div>
+          <div>当地经度：<span id="calibLng">--</span></div>
+          <div>经度时差：<span id="calibLngDiff">--</span></div>
+          <div>均时差 (EoT)：<span id="calibEot">--</span></div>
+          <div>校准真太阳时：<span id="calibTrueTime">--</span></div>
+        </div>
+      </div>
+      
+      <!-- 选项卡导航 -->
+      <nav class="tab-nav">
+        <button class="tab-btn active" data-tab="tabBazi">八字子平</button>
+        <button class="tab-btn" data-tab="tabZiwei">紫微斗数</button>
+      </nav>
+
+      <!-- 八字命理选项卡 -->
+      <div id="tabBazi" class="tab-content active">
+        <div class="bazi-layout">
+          <!-- 四柱八个字 -->
+          <div class="four-pillars-container" id="fourPillars">
+            <!-- JS 动态填入 -->
+          </div>
+
+          <!-- 分析图表与内置解析 -->
+          <div class="bazi-analysis-grid">
+            <!-- 五行分析 -->
+            <div class="glass-panel wuxing-chart-card">
+              <h3>五行力量分析</h3>
+              <div class="wuxing-bars" id="wuxingBars">
+                <!-- JS 动态渲染五行强度 -->
+              </div>
+            </div>
+
+            <!-- 内置性格、财运等推断 -->
+            <div class="glass-panel analysis-text-card">
+              <h3>命理运势简批</h3>
+              <div class="analysis-content" id="baziBriefAnalysis">
+                <!-- JS 动态渲染运势解析 -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 紫微斗数选项卡 -->
+      <div id="tabZiwei" class="tab-content">
+        <!-- 紫微 4x4 格盘 -->
+        <div class="ziwei-grid" id="ziweiGrid">
+          <!-- 12个宫位以及中宫，由 JS 动态生成 -->
+        </div>
+
+        <!-- 选中宫位深度详解卡片 -->
+        <div class="glass-panel palace-detail-card">
+          <div class="palace-detail-header">
+            <div class="palace-detail-title" id="detailPalaceName">请选择星盘中的宫位</div>
+            <div class="palace-detail-stars" id="detailPalaceStars">点击上方的宫位卡片，可在此处查看该宫的星曜解读。</div>
+          </div>
+          <div class="palace-detail-body" id="detailPalaceBody">
+            选择对应的宫位，即可解析主星、辅星的组合效应以及该宫位所主宰的人生运势（如命宫主一生性格、夫妻宫主婚姻姻缘等）。
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- AI 祖师爷解盘区 -->
+    <section class="glass-panel ai-section" id="aiSection" style="display: none;">
+      <div class="ai-header">
+        <h3>
+          <span>☯</span> 恭请 AI 祖师爷深度批命
+        </h3>
+        <button class="btn-config-toggle" id="btnConfigToggle">
+          <span>⚙️</span> API 参数配置
+        </button>
+      </div>
+
+      <!-- 折叠的 API 配置面板 -->
+      <div class="api-config-panel" id="apiConfigPanel" style="display: none;">
+        <div class="config-grid">
+          <div class="config-field">
+            <label for="apiUrl">API 代理地址 (可选)</label>
+            <input type="text" id="apiUrl" class="config-input" placeholder="留空使用官方默认 (https://generativelanguage.googleapis.com)">
+          </div>
+          <div class="config-field">
+            <label for="apiKey">Gemini API Key</label>
+            <input type="password" id="apiKey" class="config-input" placeholder="输入您的 Gemini API 密钥">
+          </div>
+          <div class="config-action">
+            <button class="btn-save-config" id="btnSaveKey">保存配置</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-box" id="chatBox">
+        <div class="chat-msg assistant">
+          <div class="msg-sender">AI 祖师爷</div>
+          <div class="msg-bubble">
+            缘主已排出乾坤大盘。请点击右上角“API 参数配置”输入您的 Gemini API Key 并保存，随后点击“恭请祖师爷批命书”，祖师爷将结合八字子平术与紫微星盘，为您撰写两千字的深度运势书，并解答您一生吉凶之问。
+          </div>
+        </div>
+      </div>
+
+      <!-- AI 交互操作台 -->
+      <div class="ai-operations-panel">
+        <div class="action-buttons-row">
+          <button class="btn-action-gold" id="btnRequestAiReport">恭请祖师爷批命书</button>
+        </div>
+        <div class="chat-input-wrapper">
+          <input type="text" id="chatInput" class="chat-input" placeholder="请先配置 API Key 并保存，以开启对话..." disabled>
+          <button class="btn-send" id="btnSendChat" disabled>咨询</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
