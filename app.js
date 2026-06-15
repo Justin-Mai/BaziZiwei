@@ -30,7 +30,7 @@ const PROVINCE_CITY_DB = {
   "甘肃": { "兰州": 103.82, "嘉峪关": 98.28, "金昌": 102.18, "白银": 104.18, "天水": 105.72, "武威": 102.63, "张掖": 100.45, "平凉": 106.68, "酒泉": 98.52, "庆阳": 107.63, "定西": 104.62, "陇南": 104.92, "临夏": 103.22, "甘南": 102.92 },
   "青海": { "西宁": 101.77, "海东": 102.1, "海北": 100.9, "黄南": 102.02, "海南州": 100.62, "果洛": 100.22, "玉树": 97.02, "海西": 97.37 },
   "宁夏": { "银川": 106.27, "石嘴山": 106.38, "吴忠": 106.2, "固原": 106.28, "中卫": 105.18 },
-  "新疆": { "乌鲁木齐": 87.68, "克拉玛依": 84.88, "吐鲁番": 89.18, "哈密": 93.52, "昌吉": 87.3, "博尔塔拉": 82.08, "巴音郭楞": 86.15, "阿克苏": 80.27, "克孜勒苏": 76.17, "喀什": 75.98, "和田": 79.93, "伊犁": 81.33, "塔城": 82.98, "阿勒泰": 88.13, "石河子": 86.03 },
+  "新疆": { "乌鲁木齐": 87.68, "克拉玛依": 84.88, "吐鲁番": 89.18, "哈密": 93.52, "昌吉": 87.3, "博尔塔拉": 82.08, "巴音郭楞": 86.15, "阿克苏": 80.27, "克孜勒苏": 76.17, "喀什": 75.98, "和田": 79.93, "伊犁": 81.33, "填满": 82.98, "阿勒泰": 88.13, "石河子": 86.03 },
   "台湾": { "台北": 121.5, "高雄": 120.3, "台中": 120.68 },
   "香港": { "香港": 114.17 },
   "澳门": { "澳门": 113.53 }
@@ -128,7 +128,7 @@ const STAR_INTERPRETATIONS = {
   },
   '廉贞': {
     '命宫': '廉贞是次桃花、囚星。性格多面，有野心、有才华、重感情，但脾气傲慢，容易偏执，带有一股邪气与叛逆。',
-    '夫妻宫': '感情炙热且多波折，占有欲强。容易因吃醋或观念差异产生争执，宜相互理解包容。',
+    '夫妻宫': '感情生活多姿多彩，配偶多才多艺、风趣幽默，但也需防防范婚姻外的桃花困扰。',
     '财帛宫': '财运起伏较大，善于以偏门、交际或演艺创意得财，需防因官非或人际纠纷破财。',
     '官禄宫': '适合军警、公职、电子科技、公关或艺术时尚行业，工作表现积极，竞争心强。'
   },
@@ -151,7 +151,7 @@ const STAR_INTERPRETATIONS = {
     '官禄宫': '适合从事公关、娱乐、艺术、餐饮旅游、或者偏门行业，事业具有开拓性。'
   },
   '巨门': {
-    '命宫': '巨门为暗曜，主口舌是非。心思缜密，观察力敏锐，辩才无碍。但也容易多疑、言多必失，招惹人际摩擦。',
+    '命宫': '巨门为暗曜，主口舌是非。心思细腻，观察力敏锐，辩才无碍。但也容易多疑、言多必失，招惹人际摩擦。',
     '夫妻宫': '夫妻容易因口舌、意见不合产生争执。配偶多言善辩，宜相敬如宾，多包容。',
     '财帛宫': '凭口才、技术或智力进财（如律师、教师、销售、演艺等），属于“劳神费口”得财。',
     '官禄宫': '适合法律、教育、策划、科研、新闻传播等需要深度思考和表达的行业。'
@@ -655,6 +655,7 @@ function performDivination() {
       bazi: baziData,
       wuxing: wuxingWeights,
       ziwei: astrolabeObj,
+      lunarObj: lunarObj,
       calibration: {
         longitude: longitude,
         offset: calib.totalOffset
@@ -1217,50 +1218,165 @@ async function generateAiReport() {
 
   // 构建 Prompt
   const bazi = lastCalculatedData.bazi;
-  const simplifiedBazi = `
-    年柱：${bazi.year.gan}${bazi.year.zhi} (纳音：${bazi.year.nayin})
-    月柱：${bazi.month.gan}${bazi.month.zhi} (纳音：${bazi.month.nayin})
-    日柱：${bazi.day.gan}${bazi.day.zhi} (纳音：${bazi.day.nayin})
-    时柱：${bazi.time.gan}${bazi.time.zhi} (纳音：${bazi.time.nayin})
-  `;
-  
-  const wuxingStr = JSON.stringify(lastCalculatedData.wuxing);
+  const lunarObj = lastCalculatedData.lunarObj;
+  const eightChar = lunarObj.getEightChar();
+  const gender = lastCalculatedData.gender;
 
-  // 提取紫微十二宫星耀简要信息供 AI 分析
-  const ziweiPalaces = lastCalculatedData.ziwei.palaces.map(p => {
-    const majors = p.majorStars ? p.majorStars.map(s => s.name + (s.mutagen ? `(化${s.mutagen})` : '')).join(',') : '无';
-    const minors = p.minorStars ? p.minorStars.map(s => s.name).join(',') : '无';
-    const bads = p.badStars ? p.badStars.map(s => s.name).join(',') : '无';
-    return `${p.name}(位于${p.heavenlyStem}${p.earthlyBranch}宫)：主星【${majors}】，吉星【${minors}】，煞星【${bads}】`;
-  }).join('\n    ');
+  // 提取出生地点
+  const province = document.getElementById('birthProvince').value || '';
+  const citySelect = document.getElementById('birthCity');
+  const city = citySelect.options[citySelect.selectedIndex]?.text || '';
+  const location = `${province}省 ${city} (东经 ${lastCalculatedData.calibration.longitude.toFixed(2)}°)`;
+
+  // 大运提取
+  const yun = eightChar.getYun(gender === '男' ? 1 : 0);
+  const startAge = yun.getStartAge();
+  const daYunList = yun.getDaYun();
+  let dayunTextList = [];
+  daYunList.forEach(dy => {
+    if (dy.getGanZhi()) {
+      dayunTextList.push(`${dy.getGanZhi()} ${dy.getStartAge()}-${dy.getEndAge()}岁`);
+    }
+  });
+  const dayunListStr = dayunTextList.join('，');
+
+  // 判定大运顺逆
+  const yearGan = bazi.year.gan;
+  const isYangGan = ['甲', '丙', '戊', '庚', '壬'].includes(yearGan);
+  const isMale = gender === '男';
+  const isForwardYun = (isYangGan && isMale) || (!isYangGan && !isMale);
+  const yunOrderText = isForwardYun ? '顺排' : '逆排';
+
+  // 当前流年
+  const currentLunar = Lunar.fromDate(new Date());
+  const currentYearGanZhi = currentLunar.getYearInGanZhi();
+
+  // 拼装八字排盘数据
+  const formattedBazi = `
+四柱：
+年柱 【${bazi.year.gan}${bazi.year.zhi}】 藏干【${bazi.year.hideGan.join(', ')}】 十神【天干 ${bazi.year.shishenGan} / 地支 ${bazi.year.shishenZhi.join(', ')}】 纳音【${bazi.year.nayin}】 空亡【${eightChar.getYearXunKong()}】
+月柱 【${bazi.month.gan}${bazi.month.zhi}】 藏干【${bazi.month.hideGan.join(', ')}】 十神【天干 ${bazi.month.shishenGan} / 地支 ${bazi.month.shishenZhi.join(', ')}】 纳音【${bazi.month.nayin}】 空亡【${eightChar.getMonthXunKong()}】
+日柱 【${bazi.day.gan}${bazi.day.zhi}】 藏干【${bazi.day.hideGan.join(', ')}】 十神【日主${GAN_WUXING[bazi.day.gan]} / 地支 ${bazi.day.shishenZhi.join(', ')}】 纳音【${bazi.day.nayin}】 空亡【${eightChar.getDayXunKong()}】 （日主为“${bazi.day.gan}${GAN_WUXING[bazi.day.gan]}”）
+时柱 【${bazi.time.gan}${bazi.time.zhi}】 藏干【${bazi.time.hideGan.join(', ')}】 十神【天干 ${bazi.time.shishenGan} / 地支 ${bazi.time.shishenZhi.join(', ')}】 纳音【${bazi.time.nayin}】 空亡【${eightChar.getTimeXunKong()}】
+命宫：【${lunarObj.getMingGong()}】 身宫：【${lastCalculatedData.ziwei.lordOfBody || '-'}】 胎元：【${lunarObj.getTaiYuan()}】
+五行力量统计：木【${lastCalculatedData.wuxing['木']}%】 火【${lastCalculatedData.wuxing['火']}%】 土【${lastCalculatedData.wuxing['土']}%】 金【${lastCalculatedData.wuxing['金']}%】 水【${lastCalculatedData.wuxing['水']}%】
+大运：【${yunOrderText}】 起运年龄【${startAge}】岁
+大运列表：【${dayunListStr}】
+当前流年：【${currentYearGanZhi}年】
+  `;
+
+  // 拼装紫微十二宫排盘数据
+  const astrolabe = lastCalculatedData.ziwei;
+  
+  // 生年四化
+  let shengnianSihua = [];
+  astrolabe.palaces.forEach(p => {
+    if (p.majorStars) {
+      p.majorStars.forEach(s => {
+        if (s.mutagen) {
+          shengnianSihua.push(`${s.name}化${s.mutagen}`);
+        }
+      });
+    }
+  });
+  const shengnianSihuaStr = shengnianSihua.length > 0 ? shengnianSihua.join('、') : '无';
+
+  // 寻找身宫
+  const bodyPalace = astrolabe.palaces.find(p => p.isBodyPalace);
+  const bodyPalaceName = bodyPalace ? bodyPalace.name : '未知';
+
+  // 计算当前虚岁和大限
+  const nominalAge = new Date().getFullYear() - lunarObj.getYear() + 1;
+  const currentDaxianPalace = astrolabe.palaces.find(p => {
+    if (p.decadal && p.decadal.range) {
+      return nominalAge >= p.decadal.range[0] && nominalAge <= p.decadal.range[1];
+    }
+    return false;
+  });
+  const daxianText = currentDaxianPalace ? 
+    `当前大限落在【${currentDaxianPalace.name}】宫，主星【${currentDaxianPalace.majorStars ? currentDaxianPalace.majorStars.map(s => s.name).join(',') : '无主星'}】，年龄区间【${currentDaxianPalace.decadal.range[0]}】岁至【${currentDaxianPalace.decadal.range[1]}】岁` : 
+    '无';
+
+  // 计算流年命宫与流年四化
+  const liunianPalace = astrolabe.palaces.find(p => p.earthlyBranch === currentLunar.getYearZhi());
+  const liunianPalaceName = liunianPalace ? liunianPalace.name : '未知';
+  const liunianSihuaStr = {
+    '丙': '天同化禄、天机化权、文昌化科、廉贞化忌',
+    '丁': '太阴化禄、天同化权、天府化科、巨门化忌',
+    '戊': '贪狼化禄、太阴化权、右弼化科、天机化忌',
+    '己': '武曲化禄、贪狼化权、天梁化科、文曲化忌',
+    '庚': '太阳化禄、武曲化权、太阴化科、天同化忌',
+    '辛': '巨门化禄、太阳化权、文曲化科、文昌化忌',
+    '壬': '天梁化禄、紫微化权、左辅化科、武曲化忌',
+    '癸': '破军化禄、巨门化权、太阴化科、贪狼化忌',
+    '甲': '廉贞化禄、破军化权、武曲化科、太阳化忌',
+    '乙': '天机化禄、天梁化权、紫微化科、太阴化忌'
+  }[currentLunar.getYearGan()] || '无';
+
+  const palacesListStr = astrolabe.palaces.map(p => {
+    const majors = p.majorStars ? p.majorStars.map(s => s.name + (s.mutagen ? `(生年化${s.mutagen})` : '')).join(',') : '空宫';
+    const minors = p.minorStars ? p.minorStars.map(s => s.name).join(',') : '无辅星';
+    const bads = p.badStars ? p.badStars.map(s => s.name).join(',') : '无煞星';
+    return `${p.name}宫：【${p.heavenlyStem}${p.earthlyBranch}】【主星：${majors}】【辅星：${minors}、煞星：${bads}】`;
+  }).join('\n');
+
+  const formattedZiwei = `
+十二宫完整信息：
+${palacesListStr}
+身宫落在：【${bodyPalaceName}】 来因宫：【${astrolabe.comingPalace || '无'}】
+生年四化：【${shengnianSihuaStr}】
+大限：【${daxianText}】
+流年：【当前流年命宫在 ${currentLunar.getYearInGanZhi()} 对应的 ${liunianPalaceName} 宫，流年四化为 ${liunianSihuaStr}】
+  `;
 
   const prompt = `
-你是一位精通中国传统命理（八字子平术与紫微斗数）的算命老先生（自称“祖师爷”）。
-缘主的基本资料如下：
-姓名：${lastCalculatedData.userName}
-性别：${lastCalculatedData.gender}
-出生时辰：${lastCalculatedData.birthTimeText}
-公历出生时间：${lastCalculatedData.solarDate}
-农历出生时间：${lastCalculatedData.lunarDate}
+你将扮演一位精通子平八字和紫微斗数的资深命理分析师。请严格按照以下说明，对我提供的命盘信息进行全面、深入、结构化的解析。请使用专业术语，但解释要通俗，语气亲和而客观，并避免绝对化的论断，始终提醒“命理是概率参考，人生仍由自己把握”。
 
-其八字排盘如下：
-${simplifiedBazi}
-其五行能量比例如下：
-${wuxingStr}
+【我的基础信息】
+出生时间：${lastCalculatedData.solarDate} (公历) / ${lastCalculatedData.lunarDate} (农历)
+性别：${gender}
+出生地点：${location}
+现居地：未提供
 
-其紫微斗数命盘十二宫分布如下：
-${ziweiPalaces}
+【八字排盘】
+${formattedBazi}
 
-请根据以上命盘数据，为这位缘主撰写一份详尽的“终身命理批命书”。
-写作要求：
-1. 语气必须极其古风，充满仙风道骨、悲悯智慧的玄学老夫子色彩，可以引用命理典籍（如《渊海子平》、《三命通会》、《紫微斗数全书》），并使用文言和白话相交织的语言。
-2. 结构应清晰地划分为：
-   - 【引言：乾坤大局】（总体气象、骨格格局）
-   - 【八字断命：五行与喜用】（身强身弱、五行调候、喜用神与改运方向）
-   - 【紫微盘析：重点宫位】（重点分析命宫、财帛宫、官禄宫、夫妻宫的主星与吉凶影响）
-   - 【一生运势：性格/事业/姻缘/健康】
-   - 【祖师爷赠言：趋吉避凶】（送给缘主的诗句与立身处世之道）
-3. 批命书请尽量详实、文笔优雅，不要使用敷衍或纯套话。
+【紫微斗数排盘】
+${formattedZiwei}
+
+【解析要求】
+请严格按以下四大部分进行综合解读，每个部分都要充分展开，必要时可对比印证。
+
+一、八字命局深度分析
+1. 日主强弱与格局：分析日主在月令的旺衰，全局的生扶克泄，判定身强或身弱，以及属于正格（如食神制杀、伤官佩印等）还是变格（从格、化格等），并解释格局成败。
+2. 喜用神与忌神：明确指出喜神、用神、忌神、仇神，以五行和十神说明依据，并点出它们在原局的体现。
+3. 性格特质：结合十神（正偏印、官杀、食伤等）和五行生克，描述性格的优点、弱点、思维模式和情绪倾向。
+4. 事业与财运：分析官星、印星、财星、食伤的组合与力量，判断适合的行业方向，事业格局高低，财运的特点（正财/偏财/横财），以及求财的起伏年份。
+5. 感情与婚姻：看夫妻宫（日支）和配偶星（正财/正官/七杀等），结合刑冲克合、十神喜忌，论婚姻早晚、配偶特征、感情关系中的注意点。
+6. 健康隐患：从五行偏枯、干支冲克、疾病星（如金木交战、火炎土燥、枭神夺食等）和刑冲会合角度，提示易发部位和潜在疾病。
+7. 六亲关系：简要描述与父母、子女、手足等关系的基调。
+8. 大运走势详解：将每一步大运的干支与原局互动进行解读，指出哪几步运顺遂，哪几步需谨慎，并详细解读当前所处大运的各方面影响。
+
+二、紫微斗数命局详细分析
+1. 命宫与三方四正：命宫主星、辅星揭示的天赋、本性、人格面具，结合官禄宫、财帛宫、迁移宫的星曜及四化，描述外在表现和人生核心驱动力。
+2. 十二宫精析：对夫妻、财帛、官禄、疾厄、迁移、福德等与我密切相关的宫位逐一解读，包括主星、辅星、四化以及宫位间的飞化影响。
+3. 四化飞星脉络：以生年四化为起点，分析哪颗星化禄、化权、化科、化忌落在哪个宫位，牵动了哪些领域，形成怎样的因果链条与人生重心。
+4. 特殊格局：判断命盘是否形成杀破狼、机月同梁、紫府同宫、月朗天门、明珠出海、马头带箭等格局，并说明其条件和应象。
+5. 身宫影响：身宫所在宫位代表后天执着的领域，重点解读身宫星曜如何影响中年以后的发展重心。
+6. 大限与流年：详细解读当前大限（十年大运）的整体趋势，再结合当前流年命宫、流年四化及各宫互动，断流年重点事件、机遇与挑战。
+
+三、八字与紫微合参（相互印证）
+1. 信息一致性：找到八字五行喜忌与紫微星曜五行属性的呼应与印证（如八字喜木，紫微命宫天机木星带科，强化智慧发展）。八字十神特质与紫微主星性格的对应（如正官格与紫微、天相坐命，都显稳重守规矩）。
+2. 差异与补充：指出两套系统可能存在的矛盾之处（如八字财旺身弱，而紫微财帛宫却煞星汇聚，表示求财辛苦但机会仍多），并给出更立体的理解。
+3. 合论运势：结合八字大运与紫微大限、流年，共同确认人生重大转折点，指出当前最重要的事件征象，给出综合趋避建议。
+
+四、总结与具体建议
+1. 性格与天赋总结：用简练语言概括核心人格、天赋优势及需突破的局限。
+2. 人生重点课题：指出一生中反复出现的主题（如感情、金钱、健康等）。
+3. 当前及近年建议：针对当下大运和流年，给出在事业、感情、财务、健康等方面的具体行动建议。
+4. 修身方向：推荐适合的修行、学习方向或调整性情的方法，帮助趋吉避凶。
+
+请严格遵循以上结构输出，每个部分都要有实质分析，不要用空话堆砌。在最后，请附上一句温暖鼓励的话，并重申命理仅供参考，自己才是人生的主人。
 `;
 
   // 保存到聊天上下文
