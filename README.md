@@ -58,6 +58,14 @@ baziziwei/
 *   **[iztro](https://github.com/SylarLong/iztro)**：强大且轻量级的紫微斗数排盘算法引擎。
 *   **[marked.js](https://github.com/markedjs/marked)**：用于在浏览器前端优雅地渲染 AI 生成的 Markdown 批命书。
 
+## 💖 打赏支持
+
+如果您觉得“玄机阁”对您的命理研究或项目开发有帮助，欢迎用一杯咖啡或一瓶可乐打赏支持作者的无私开源创作！
+
+<div align="center">
+  <img src="picture/dashang.jpg" alt="打赏作者" width="220" style="border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" />
+</div>
+
 ---
 
 ## Star History
