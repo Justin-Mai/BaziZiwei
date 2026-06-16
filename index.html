@@ -220,6 +220,41 @@
 
     </section>
 
+    <!-- 命盘校准 (定盘) -->
+    <section class="glass-panel rectification-section" id="rectificationSection" style="margin-top: 30px; padding: 25px;">
+      <h3 style="font-family: var(--font-classic); color: var(--gold-color); font-size: 1.3rem; margin-bottom: 15px; border-left: 3px solid var(--gold-color); padding-left: 10px;">☯ 命理定盘校准</h3>
+      <p style="color: var(--text-mute); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.5;">
+        如果您无法确定精确的出生时辰（例如处于时辰交界、或是对真平太阳时有分歧），可以通过反馈人生大事，让 AI 祖师爷为您对比不同时辰的命盘，推演定盘。
+      </p>
+      
+      <div class="rectification-grid">
+        <!-- 选取对比盘口 -->
+        <div class="rectification-col">
+          <label style="color: var(--gold-color); font-weight: bold; margin-bottom: 10px; display: block; font-size: 0.95rem;">第一步：选择需要对比的已存档案 (请选择 2 个及以上)</label>
+          <div class="rectification-records-list" id="rectifyRecordsList">
+            <!-- JS 动态加载历史档案，带多选框 -->
+            <div class="rectify-empty" style="color: var(--text-mute); font-size: 0.9rem; opacity: 0.6; padding: 10px 0;">请先在上方历史档案中保存至少两条记录</div>
+          </div>
+        </div>
+        
+        <!-- 输入人生大事 -->
+        <div class="rectification-col">
+          <label style="color: var(--gold-color); font-weight: bold; margin-bottom: 10px; display: block; font-size: 0.95rem;">第二步：提供人生大事线索（尽量提供明确年份/月份）</label>
+          <textarea id="rectifyEventsInput" rows="8" class="rectify-textarea" placeholder="找出你人生中几件明确的、年代可考的大事：
+1. 出生家庭情况（父母关系、家庭经济、有否变故）
+2. 读书时期（小学/中学/大学是否顺利、转学、重大升学年份）
+3. 重大健康事件（开刀、住院、骨折等，记下年份和月份）
+4. 感情事件（结婚、离婚、分手，记下年份）
+5. 事业/财运变动（换工作、升职、破财、创业，记下年份）
+6. 与家人、子女的重要事件"></textarea>
+        </div>
+      </div>
+      
+      <div style="margin-top: 25px; text-align: center;">
+        <button type="button" class="btn-action-gold" id="btnStartRectify" style="max-width: 300px; width: 100%; height: 45px; font-weight: bold;">恭请祖师爷定盘</button>
+      </div>
+    </section>
+
     <!-- AI 祖师爷解盘区 -->
     <section class="glass-panel ai-section" id="aiSection" style="display: none;">
       <div class="ai-header">

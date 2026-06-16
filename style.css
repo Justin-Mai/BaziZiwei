@@ -1533,3 +1533,70 @@ header p {
   font-weight: 600;
 }
 
+/* 定盘功能样式 */
+.rectification-grid {
+  display: flex;
+  gap: 24px;
+}
+.rectification-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.rectification-records-list {
+  flex: 1;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rectify-record-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text-main);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+.rectify-record-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.rectify-record-item input[type="checkbox"] {
+  cursor: pointer;
+  width: auto;
+  margin: 0;
+}
+.rectify-textarea {
+  width: 100%;
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text-main);
+  border-radius: 8px;
+  padding: 12px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  outline: none;
+  resize: vertical;
+  flex: 1;
+  box-sizing: border-box;
+}
+.rectify-textarea:focus {
+  border-color: var(--gold-color);
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.2);
+}
+
+@media (max-width: 768px) {
+  .rectification-grid {
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+

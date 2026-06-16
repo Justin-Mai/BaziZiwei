@@ -546,6 +546,11 @@ function bindEvents() {
   document.getElementById('btnSaveHistory').addEventListener('click', () => {
     saveCurrentRecord();
   });
+
+  // 定盘校准
+  document.getElementById('btnStartRectify').addEventListener('click', () => {
+    startRectification();
+  });
 }
 
 // 7. 命理计算主流程
@@ -1659,6 +1664,9 @@ function loadHistory() {
     `;
     historyList.appendChild(item);
   });
+  
+  // 同步刷新定盘对比列表
+  loadHistoryForRectify(records);
 }
 
 // 保存当前排盘记录
@@ -1817,4 +1825,236 @@ function deleteHistoryRecord(event, index) {
   records.splice(index, 1);
   localStorage.setItem('bazi_ziwei_history', JSON.stringify(records));
   loadHistory();
+}
+
+// 刷新定盘对比选择列表
+function loadHistoryForRectify(records) {
+  const rectifyList = document.getElementById('rectifyRecordsList');
+  if (!rectifyList) return;
+  
+  if (records.length === 0) {
+    rectifyList.innerHTML = '<div class="rectify-empty" style="color: var(--text-mute); font-size: 0.9rem; opacity: 0.6; padding: 10px 0;">请先在上方历史档案中保存至少两条记录</div>';
+    return;
+  }
+  
+  rectifyList.innerHTML = '';
+  records.forEach((record, index) => {
+    const item = document.createElement('label');
+    item.className = 'rectify-record-item';
+    
+    let timeText = '';
+    if (record.calendarType === 'solar') {
+      timeText = `${record.solarDate} ${record.birthHour.toString().padStart(2, '0')}:${record.birthMinute.toString().padStart(2, '0')}`;
+    } else {
+      timeText = `农历 ${record.lunarYear}年${record.lunarMonth}月${record.lunarDay}日 ${record.birthHour.toString().padStart(2, '0')}:${record.birthMinute.toString().padStart(2, '0')}`;
+    }
+    
+    const baziSolarIcon = record.baziTrueSolar !== false ? '✔' : '×';
+    const ziweiSolarIcon = record.ziweiTrueSolar !== false ? '✔' : '×';
+    
+    item.innerHTML = `
+      <input type="checkbox" name="rectifyRecord" value="${index}">
+      <div style="flex:1;">
+        <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+          <span style="font-weight:bold;">${escapeHtml(record.userName)} (${record.gender === '男' ? '乾' : '坤'})</span>
+          <span style="font-size:0.75rem; color:var(--gold-color);">八字${baziSolarIcon} 紫微${ziweiSolarIcon}</span>
+        </div>
+        <div style="font-size:0.75rem; color:var(--text-mute); margin-top:2px;">${timeText}</div>
+      </div>
+    `;
+    rectifyList.appendChild(item);
+  });
+}
+
+// 转换历史记录为排盘基础数据供对比
+function getBaziZiweiForRecord(record) {
+  let baseDate;
+  if (record.calendarType === 'solar') {
+    const [y, m, d] = record.solarDate.split('-').map(Number);
+    baseDate = new Date(y, m - 1, d, record.birthHour, record.birthMinute, 0);
+  } else {
+    const y = parseInt(record.lunarYear);
+    const m = parseInt(record.lunarMonth);
+    const d = parseInt(record.lunarDay);
+    const leap = record.lunarLeap === 'true';
+    const flatLunar = Lunar.fromYmd(y, leap ? -m : m, d);
+    const flatSolar = flatLunar.getSolar();
+    baseDate = new Date(flatSolar.getYear(), flatSolar.getMonth() - 1, flatSolar.getDay(), record.birthHour, record.birthMinute, 0);
+  }
+  
+  const calib = getTrueSolarTime(baseDate, record.longitude);
+  const trueTime = calib.trueTime;
+  
+  // 八字时间
+  let baziCalcTime = new Date(record.baziTrueSolar !== false ? trueTime.getTime() : baseDate.getTime());
+  if (baziCalcTime.getHours() >= 23) {
+    baziCalcTime.setHours(baziCalcTime.getHours() + 1);
+  }
+  const baziSolarObj = Solar.fromYmdHms(
+    baziCalcTime.getFullYear(),
+    baziCalcTime.getMonth() + 1,
+    baziCalcTime.getDate(),
+    baziCalcTime.getHours(),
+    baziCalcTime.getMinutes(),
+    0
+  );
+  const baziLunarObj = baziSolarObj.getLunar();
+  const eightChar = baziLunarObj.getEightChar();
+  
+  // 紫微时间
+  let ziweiCalcTime = new Date(record.ziweiTrueSolar !== false ? trueTime.getTime() : baseDate.getTime());
+  if (ziweiCalcTime.getHours() >= 23) {
+    ziweiCalcTime.setHours(ziweiCalcTime.getHours() + 1);
+  }
+  const ziweiSolarObj = Solar.fromYmdHms(
+    ziweiCalcTime.getFullYear(),
+    ziweiCalcTime.getMonth() + 1,
+    ziweiCalcTime.getDate(),
+    ziweiCalcTime.getHours(),
+    ziweiCalcTime.getMinutes(),
+    0
+  );
+  
+  const baziHour = record.baziTrueSolar !== false ? trueTime.getHours() : baseDate.getHours();
+  const baziTimeIndex = Math.floor(((baziHour + 1) % 24) / 2);
+  const ziweiHour = record.ziweiTrueSolar !== false ? trueTime.getHours() : baseDate.getHours();
+  const ziweiTimeIndex = Math.floor(((ziweiHour + 1) % 24) / 2);
+  
+  const dateStr = `${ziweiSolarObj.getYear()}-${ziweiSolarObj.getMonth()}-${ziweiSolarObj.getDay()}`;
+  const genderKey = record.gender === '男' ? 'M' : 'F';
+  const astrolabeObj = iztro.astro.bySolar(dateStr, ziweiTimeIndex, genderKey, true, 'zh-CN');
+  
+  return {
+    bazi: `${eightChar.getYearGan()}${eightChar.getYearZhi()} ${eightChar.getMonthGan()}${eightChar.getMonthZhi()} ${eightChar.getDayGan()}${eightChar.getDayZhi()} ${eightChar.getTimeGan()}${eightChar.getTimeZhi()}`,
+    ziwei: astrolabeObj,
+    timeText: `${record.birthHour.toString().padStart(2, '0')}:${record.birthMinute.toString().padStart(2, '0')} (${record.calendarType === 'solar' ? '阳历' : '阴历'})${record.baziTrueSolar !== false ? ' (八字真时)' : ' (八字平时)'}${record.ziweiTrueSolar !== false ? ' (紫微真时)' : ' (紫微平时)'}`
+  };
+}
+
+// 构造定盘 Prompt
+function buildRectifyPrompt(selectedRecords, eventsText) {
+  const recordsData = selectedRecords.map((r, i) => {
+    const data = getBaziZiweiForRecord(r);
+    const ziweiSummary = data.ziwei.palaces.map(p => {
+      const majors = p.majorStars ? p.majorStars.map(s => s.name + (s.mutagen ? `(生年化${s.mutagen})` : '')).join(',') : '空宫';
+      return `${p.name}宫: ${majors}`;
+    }).join('; ');
+    
+    return `
+--- 备选命盘 ${i + 1} ---
+姓名：${r.userName}
+性别：${r.gender}
+出生时间配置：${data.timeText}
+经度：${r.longitude}°E
+八字四柱：${data.bazi}
+紫微斗数主星分布：${ziweiSummary}
+`;
+  }).join('\n');
+
+  return `你是一位精通子平八字与紫微斗数的资深命理大宗师。现在有缘主提供了一个“定盘”（时辰校准）的需求，需要你通过他/她反馈的几件人生大事，在多个备选盘口中推演判定出最吻合真实生命轨迹的那一个。
+
+【缘主提供的人生大事线索】
+${eventsText}
+
+【可供对比分析的备选命盘口】
+${recordsData}
+
+【定盘分析要求】
+1. **多盘深入比对**：
+   - 逐一对照每个备选命盘，分析各盘中对应的命理印征与缘主大事的符合程度。
+   - 比如：出生家庭情况看八字年/月柱及印/财星，紫微父母/兄弟/田宅宫；读书看印/食伤/文昌及官禄宫；健康看疾厄宫及冲克；感情看夫妻宫及配偶星；事业财运看流年大限及四化飞星。
+2. **给出明确结论**：
+   - 明确指出哪一个命盘与大事最吻合，给出其估算吻合度（如 90%）。
+   - 解释为什么其他命盘不吻合（指出关键的矛盾点，例如：某盘在某年大凶，而缘主实际在当年结婚且事业升职，因此不符）。
+3. **定盘后批示**：
+   - 简单总结定盘后确定命盘的性格核心亮点和未来近年（如两三年内）的简要运势提醒。
+
+请使用排版精美、结构清晰的 markdown 格式输出您的定盘结论，用词专业而和善。`;
+}
+
+// 开启 AI 定盘逻辑
+async function startRectification() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) {
+    alert('请先在右下方“API 参数配置”中配置并保存 Gemini API Key 才能进行 AI 定盘！');
+    const apiConfigPanel = document.getElementById('apiConfigPanel');
+    const btnConfigToggle = document.getElementById('btnConfigToggle');
+    if (apiConfigPanel && btnConfigToggle) {
+      apiConfigPanel.style.display = 'block';
+      btnConfigToggle.classList.add('active');
+    }
+    document.getElementById('aiSection').style.display = 'flex';
+    document.getElementById('aiSection').scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+  
+  const checkboxes = document.querySelectorAll('input[name="rectifyRecord"]:checked');
+  if (checkboxes.length < 2) {
+    alert('☯ 定盘校准需要对比不同的命盘。请在第一步中至少勾选 2 个档案！');
+    return;
+  }
+  
+  const eventsText = document.getElementById('rectifyEventsInput').value.trim();
+  if (!eventsText) {
+    alert('☯ 请在第二步中填写一些您人生中的大事线索（如升学、工作变动、结婚、生病开刀等年份），以便祖师爷为您推演定盘！');
+    return;
+  }
+  
+  let records = [];
+  try {
+    records = JSON.parse(localStorage.getItem('bazi_ziwei_history') || '[]');
+  } catch (e) {
+    records = [];
+  }
+  
+  const selectedRecords = Array.from(checkboxes).map(cb => records[parseInt(cb.value)]);
+  
+  const btnRectify = document.getElementById('btnStartRectify');
+  btnRectify.textContent = '祖师爷排盘推演中...';
+  btnRectify.disabled = true;
+  
+  document.getElementById('aiSection').style.display = 'flex';
+  document.getElementById('aiSection').scrollIntoView({ behavior: 'smooth' });
+  
+  const userMsgText = `【申请定盘校准】\n大事线索：\n${eventsText}\n\n对比档案：\n` + selectedRecords.map(r => {
+    let t = '';
+    if (r.calendarType === 'solar') {
+      t = `${r.solarDate} ${r.birthHour.toString().padStart(2, '0')}:${r.birthMinute.toString().padStart(2, '0')} (阳历)`;
+    } else {
+      t = `农历 ${r.lunarYear}年${r.lunarMonth}月${r.lunarDay}日 ${r.birthHour.toString().padStart(2, '0')}:${r.birthMinute.toString().padStart(2, '0')}`;
+    }
+    return `- ${r.userName} (${r.gender}) | 时间: ${t} | 八字真时:${r.baziTrueSolar !== false ? '是' : '否'} | 紫微真时:${r.ziweiTrueSolar !== false ? '是' : '否'}`;
+  }).join('\n');
+  
+  appendChatMessage('user', userMsgText);
+  appendChatMessage('assistant', '（祖师爷已收到您的定盘请求，正在调阅各路星盘，对照您提供的人生大事进行深度合参推演，请稍候……）');
+  
+  try {
+    const prompt = buildRectifyPrompt(selectedRecords, eventsText);
+    const rectifyHistory = [
+      { role: 'user', parts: [{ text: prompt }] }
+    ];
+    
+    const responseText = await callGeminiApi(apiKey, rectifyHistory);
+    
+    const chatBox = document.getElementById('chatBox');
+    chatBox.removeChild(chatBox.lastChild);
+    
+    const htmlReport = marked.parse(responseText);
+    appendChatMessage('assistant', htmlReport, true);
+    
+    chatHistory.push({ role: 'user', parts: [{ text: `（用户进行了定盘校准，信息如下：\n${userMsgText}）` }] });
+    chatHistory.push({ role: 'model', parts: [{ text: responseText }] });
+    
+  } catch (err) {
+    console.error(err);
+    const chatBox = document.getElementById('chatBox');
+    if (chatBox.lastChild) {
+      chatBox.removeChild(chatBox.lastChild);
+    }
+    appendChatMessage('assistant', '（祖师爷定盘受阻，天机被遮蔽。请检查您的 Gemini API Key 是否有效，或网络是否通畅。）');
+  } finally {
+    btnRectify.textContent = '恭请祖师爷定盘';
+    btnRectify.disabled = false;
+  }
 }
