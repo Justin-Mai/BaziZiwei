@@ -30,8 +30,8 @@ const PROVINCE_CITY_DB = {
   "甘肃": { "兰州": 103.82, "嘉峪关": 98.28, "金昌": 102.18, "白银": 104.18, "天水": 105.72, "武威": 102.63, "张掖": 100.45, "平凉": 106.68, "酒泉": 98.52, "庆阳": 107.63, "定西": 104.62, "陇南": 104.92, "临夏": 103.22, "甘南": 102.92 },
   "青海": { "西宁": 101.77, "海东": 102.1, "海北": 100.9, "黄南": 102.02, "海南州": 100.62, "果洛": 100.22, "玉树": 97.02, "海西": 97.37 },
   "宁夏": { "银川": 106.27, "石嘴山": 106.38, "吴忠": 106.2, "固原": 106.28, "中卫": 105.18 },
-  "新疆": { "乌鲁木齐": 87.68, "克拉玛依": 84.88, "吐鲁番": 89.18, "哈密": 93.52, "昌吉": 87.3, "博尔塔拉": 82.08, "巴音郭楞": 86.15, "阿克苏": 80.27, "克孜勒苏": 76.17, "喀什": 75.98, "和田": 79.93, "伊犁": 81.33, "填满": 82.98, "阿勒泰": 88.13, "石河子": 86.03 },
-  "台湾": { "台北": 121.5, "高雄": 120.3, "台中": 120.68 },
+  "新疆": { "乌鲁木齐": 87.68, "克拉玛依": 84.88, "吐鲁番": 89.18, "哈密": 93.52, "昌吉": 87.3, "博尔塔拉": 82.08, "巴音郭楞": 86.15, "阿克苏": 80.27, "克孜勒苏": 76.17, "喀什": 75.98, "和田": 79.93, "伊犁": 81.33, "塔城": 82.98, "阿勒泰": 88.13, "石河子": 86.03 },
+  "Taiwan": { "台北": 121.5, "高雄": 120.3, "台中": 120.68 },
   "香港": { "香港": 114.17 },
   "澳门": { "澳门": 113.53 }
 };
@@ -117,7 +117,7 @@ const STAR_INTERPRETATIONS = {
   '武曲': {
     '命宫': '武曲为正财星、将星。性格刚毅刚直，作风果断，执行力极强。但人际交往中略嫌严厉，女命则易显得过于刚强。',
     '夫妻宫': '感情偏于理智、冷淡。配偶性格刚毅、重实际。宜多沟通，减少争执。',
-    '财帛宫': '财运极旺！正财星落本位，善于理财、投资及白手起家。适合经商或金融、制造行业。',
+    '财帛宫': '财运极旺！正财星落本位，善于理财、投资及白手起家。适合经商或金融、制造行业. ',
     '官禄宫': '事业稳健，适合金融、军事、警察、五金制造或实体企业经营，做事铁面无私。'
   },
   '天同': {
@@ -528,6 +528,14 @@ function bindEvents() {
   document.getElementById('btnRequestAiReport').addEventListener('click', () => {
     generateAiReport();
   });
+
+  // 复制盘面与 AI 提示词
+  const btnCopyPrompt = document.getElementById('btnCopyReportPrompt');
+  if (btnCopyPrompt) {
+    btnCopyPrompt.addEventListener('click', () => {
+      copyReportPrompt();
+    });
+  }
 }
 
 // 7. 命理计算主流程
@@ -1066,21 +1074,20 @@ function renderZiweiGrid(astrolabe) {
       `;
     };
 
-    if (palace.majorStars) {
-      palace.majorStars.forEach(s => {
+    const allMainStars = [];
+    if (palace.majorStars) allMainStars.push(...palace.majorStars);
+    if (palace.minorStars) allMainStars.push(...palace.minorStars);
+    if (palace.badStars) allMainStars.push(...palace.badStars);
+
+    allMainStars.forEach(s => {
+      if (s.type === 'major') {
         mainStarsHtml += renderStar(s, 'star-major-type');
-      });
-    }
-    if (palace.minorStars) {
-      palace.minorStars.forEach(s => {
-        mainStarsHtml += renderStar(s, 'star-lucky-type');
-      });
-    }
-    if (palace.badStars) {
-      palace.badStars.forEach(s => {
+      } else if (s.type === 'bad') {
         mainStarsHtml += renderStar(s, 'star-bad-type');
-      });
-    }
+      } else {
+        mainStarsHtml += renderStar(s, 'star-lucky-type');
+      }
+    });
 
     // 杂曜与流曜 (小字竖排区)
     let minorStarsHtml = '';
@@ -1198,25 +1205,9 @@ function showPalaceDetails(palace) {
 // 14. AI 祖师爷批命与聊天对话逻辑
 const chatHistory = [];
 
-async function generateAiReport() {
-  const apiKey = document.getElementById('apiKey').value.trim();
-  if (!apiKey) {
-    alert('请在右上方填入您的 Gemini API Key 才能向祖师爷求取命书！');
-    return;
-  }
+function buildDivinationPrompt() {
+  if (!lastCalculatedData) return '';
 
-  if (!lastCalculatedData) {
-    alert('请先进行排盘计算！');
-    return;
-  }
-
-  const btnReport = document.getElementById('btnRequestAiReport');
-  btnReport.textContent = '祖师爷开坛做法中...';
-  btnReport.disabled = true;
-
-  appendChatMessage('assistant', '（祖师爷掐指一算，闭目沉思，正在为您撰写天地运势书……请稍候）');
-
-  // 构建 Prompt
   const bazi = lastCalculatedData.bazi;
   const lunarObj = lastCalculatedData.lunarObj;
   const eightChar = lunarObj.getEightChar();
@@ -1230,7 +1221,7 @@ async function generateAiReport() {
 
   // 大运提取
   const yun = eightChar.getYun(gender === '男' ? 1 : 0);
-  const startAge = yun.getStartAge();
+  const startAge = typeof yun.getStartAge === 'function' ? yun.getStartAge() : yun.getStartYear();
   const daYunList = yun.getDaYun();
   let dayunTextList = [];
   daYunList.forEach(dy => {
@@ -1258,7 +1249,7 @@ async function generateAiReport() {
 月柱 【${bazi.month.gan}${bazi.month.zhi}】 藏干【${bazi.month.hideGan.join(', ')}】 十神【天干 ${bazi.month.shishenGan} / 地支 ${bazi.month.shishenZhi.join(', ')}】 纳音【${bazi.month.nayin}】 空亡【${eightChar.getMonthXunKong()}】
 日柱 【${bazi.day.gan}${bazi.day.zhi}】 藏干【${bazi.day.hideGan.join(', ')}】 十神【日主${GAN_WUXING[bazi.day.gan]} / 地支 ${bazi.day.shishenZhi.join(', ')}】 纳音【${bazi.day.nayin}】 空亡【${eightChar.getDayXunKong()}】 （日主为“${bazi.day.gan}${GAN_WUXING[bazi.day.gan]}”）
 时柱 【${bazi.time.gan}${bazi.time.zhi}】 藏干【${bazi.time.hideGan.join(', ')}】 十神【天干 ${bazi.time.shishenGan} / 地支 ${bazi.time.shishenZhi.join(', ')}】 纳音【${bazi.time.nayin}】 空亡【${eightChar.getTimeXunKong()}】
-命宫：【${lunarObj.getMingGong()}】 身宫：【${lastCalculatedData.ziwei.lordOfBody || '-'}】 胎元：【${lunarObj.getTaiYuan()}】
+命宫：【${eightChar.getMingGong()}】 身宫：【${lastCalculatedData.ziwei.lordOfBody || '-'}】 胎元：【${eightChar.getTaiYuan()}】
 五行力量统计：木【${lastCalculatedData.wuxing['木']}%】 火【${lastCalculatedData.wuxing['火']}%】 土【${lastCalculatedData.wuxing['土']}%】 金【${lastCalculatedData.wuxing['金']}%】 水【${lastCalculatedData.wuxing['水']}%】
 大运：【${yunOrderText}】 起运年龄【${startAge}】岁
 大运列表：【${dayunListStr}】
@@ -1315,8 +1306,25 @@ async function generateAiReport() {
 
   const palacesListStr = astrolabe.palaces.map(p => {
     const majors = p.majorStars ? p.majorStars.map(s => s.name + (s.mutagen ? `(生年化${s.mutagen})` : '')).join(',') : '空宫';
-    const minors = p.minorStars ? p.minorStars.map(s => s.name).join(',') : '无辅星';
-    const bads = p.badStars ? p.badStars.map(s => s.name).join(',') : '无煞星';
+    
+    // 收集辅吉星与煞星，根据其 type 进行精准归类
+    const luckyStars = [];
+    const badStars = [];
+    
+    const checkAndClassify = (s) => {
+      if (s.type === 'bad') {
+        badStars.push(s.name);
+      } else {
+        luckyStars.push(s.name);
+      }
+    };
+    
+    if (p.minorStars) p.minorStars.forEach(checkAndClassify);
+    if (p.badStars) p.badStars.forEach(checkAndClassify);
+    
+    const minors = luckyStars.length > 0 ? luckyStars.join(',') : '无辅星';
+    const bads = badStars.length > 0 ? badStars.join(',') : '无煞星';
+    
     return `${p.name}宫：【${p.heavenlyStem}${p.earthlyBranch}】【主星：${majors}】【辅星：${minors}、煞星：${bads}】`;
   }).join('\n');
 
@@ -1329,8 +1337,7 @@ ${palacesListStr}
 流年：【当前流年命宫在 ${currentLunar.getYearInGanZhi()} 对应的 ${liunianPalaceName} 宫，流年四化为 ${liunianSihuaStr}】
   `;
 
-  const prompt = `
-你将扮演一位精通子平八字和紫微斗数的资深命理分析师。请严格按照以下说明，对我提供的命盘信息进行全面、深入、结构化的解析。请使用专业术语，但解释要通俗，语气亲和而客观，并避免绝对化的论断，始终提醒“命理是概率参考，人生仍由自己把握”。
+  return `你将扮演一位精通子平八字和紫微斗数的资深命理分析师。请严格按照以下说明，对我提供的命盘信息进行全面、深入、结构化的解析。请使用专业术语，但解释要通俗，语气亲和而客观，并避免绝对化的论断，始终提醒“命理是概率参考，人生仍由自己把握”。
 
 【我的基础信息】
 出生时间：${lastCalculatedData.solarDate} (公历) / ${lastCalculatedData.lunarDate} (农历)
@@ -1345,7 +1352,7 @@ ${formattedBazi}
 ${formattedZiwei}
 
 【解析要求】
-请严格按以下四大部分进行综合解读，每个部分都要充分展开，必要时可对比印证。
+请严格按以下四部分进行综合解读，每个部分都要充分展开，必要时可对比印证。
 
 一、八字命局深度分析
 1. 日主强弱与格局：分析日主在月令的旺衰，全局的生扶克泄，判定身强或身弱，以及属于正格（如食神制杀、伤官佩印等）还是变格（从格、化格等），并解释格局成败。
@@ -1376,10 +1383,28 @@ ${formattedZiwei}
 3. 当前及近年建议：针对当下大运和流年，给出在事业、感情、财务、健康等方面的具体行动建议。
 4. 修身方向：推荐适合的修行、学习方向或调整性情的方法，帮助趋吉避凶。
 
-请严格遵循以上结构输出，每个部分都要有实质分析，不要用空话堆砌。在最后，请附上一句温暖鼓励的话，并重申命理仅供参考，自己才是人生的主人。
-`;
+请严格遵循以上结构输出，每个部分都要有实质分析，不要用空话堆砌。在最后，请附上一句温暖鼓励的话，并重申命理仅供参考，自己才是人生的主人。`;
+}
 
-  // 保存到聊天上下文
+async function generateAiReport() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) {
+    alert('请在右上方填入您的 Gemini API Key 才能向祖师爷求取命书！');
+    return;
+  }
+
+  if (!lastCalculatedData) {
+    alert('请先进行排盘计算！');
+    return;
+  }
+
+  const btnReport = document.getElementById('btnRequestAiReport');
+  btnReport.textContent = '祖师爷开坛做法中...';
+  btnReport.disabled = true;
+
+  appendChatMessage('assistant', '（祖师爷掐指一算，闭目沉思，正在为您撰写天地运势书……请稍候）');
+
+  const prompt = buildDivinationPrompt();
   chatHistory.push({ role: 'user', parts: [{ text: prompt }] });
 
   try {
@@ -1401,6 +1426,56 @@ ${formattedZiwei}
     btnReport.textContent = '恭请祖师爷批命书';
     btnReport.disabled = false;
   }
+}
+
+function copyReportPrompt() {
+  if (!lastCalculatedData) {
+    alert('请先进行排盘计算！');
+    return;
+  }
+
+  try {
+    const prompt = buildDivinationPrompt();
+    if (!prompt) {
+      alert('排盘提示词内容为空，请重新排盘。');
+      return;
+    }
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(prompt).then(() => {
+        alert('☯ 盘面详细数据与AI提示词已成功复制到剪贴板！\n您可以直接粘贴给任何网页端AI（如 ChatGPT、Claude、Kimi 等）进行深度合参分析。');
+      }).catch(err => {
+        console.error('复制失败: ', err);
+        fallbackCopyText(prompt);
+      });
+    } else {
+      fallbackCopyText(prompt);
+    }
+  } catch (err) {
+    console.error('生成提示词时出错:', err);
+    alert('生成提示词时出错，错误信息: ' + err.message + '\n请检查是否已正常进行“开启天机排盘”计算，或检查浏览器控制台。');
+  }
+}
+
+function fallbackCopyText(text) {
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.style.position = "fixed";  // 避免滚动到视图外部
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  try {
+    const successful = document.execCommand('copy');
+    if (successful) {
+      alert('☯ 盘面详细数据与AI提示词已成功复制到剪贴板！\n您可以直接粘贴给任何网页端AI（如 ChatGPT、Claude、Kimi 等）进行深度合参分析。');
+    } else {
+      alert('复制失败，请手动选择并复制。');
+    }
+  } catch (err) {
+    console.error('Fallback 复制失败: ', err);
+    alert('由于浏览器安全限制，自动复制失败，请查看控制台。');
+  }
+  document.body.removeChild(textArea);
 }
 
 async function sendChatMessage() {

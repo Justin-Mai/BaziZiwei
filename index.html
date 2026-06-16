@@ -238,8 +238,9 @@
 
       <!-- AI 交互操作台 -->
       <div class="ai-operations-panel">
-        <div class="action-buttons-row">
-          <button class="btn-action-gold" id="btnRequestAiReport">恭请祖师爷批命书</button>
+        <div class="action-buttons-row" style="display: flex; gap: 12px; width: 100%;">
+          <button class="btn-action-gold" id="btnRequestAiReport" style="flex: 1;">恭请祖师爷批命书</button>
+          <button class="btn-action-outline" id="btnCopyReportPrompt" style="flex: 1;">复制排盘与AI提示词</button>
         </div>
         <div class="chat-input-wrapper">
           <input type="text" id="chatInput" class="chat-input" placeholder="请先配置 API Key 并保存，以开启对话..." disabled>
