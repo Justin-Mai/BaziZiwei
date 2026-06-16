@@ -551,6 +551,9 @@ function bindEvents() {
   document.getElementById('btnStartRectify').addEventListener('click', () => {
     startRectification();
   });
+  document.getElementById('btnCopyRectifyPrompt').addEventListener('click', () => {
+    copyRectifyPrompt();
+  });
 }
 
 // 7. 命理计算主流程
@@ -1866,7 +1869,7 @@ function loadHistoryForRectify(records) {
   });
 }
 
-// 转换历史记录为排盘基础数据供对比
+// 转换历史记录为排盘基础数据供对比 (输出详细的数据)
 function getBaziZiweiForRecord(record) {
   let baseDate;
   if (record.calendarType === 'solar') {
@@ -1922,12 +1925,160 @@ function getBaziZiweiForRecord(record) {
   
   const dateStr = `${ziweiSolarObj.getYear()}-${ziweiSolarObj.getMonth()}-${ziweiSolarObj.getDay()}`;
   const genderKey = record.gender === '男' ? 'M' : 'F';
-  const astrolabeObj = iztro.astro.bySolar(dateStr, ziweiTimeIndex, genderKey, true, 'zh-CN');
-  
+  const astrolabe = iztro.astro.bySolar(dateStr, ziweiTimeIndex, genderKey, true, 'zh-CN');
+
+  // ========== 拼装八字四柱与神煞 ==========
+  const baziData = {
+    year: {
+      gan: eightChar.getYearGan(),
+      zhi: eightChar.getYearZhi(),
+      hideGan: eightChar.getYearHideGan(),
+      shishenGan: eightChar.getYearShiShenGan(),
+      shishenZhi: eightChar.getYearShiShenZhi(),
+      nayin: eightChar.getYearNaYin()
+    },
+    month: {
+      gan: eightChar.getMonthGan(),
+      zhi: eightChar.getMonthZhi(),
+      hideGan: eightChar.getMonthHideGan(),
+      shishenGan: eightChar.getMonthShiShenGan(),
+      shishenZhi: eightChar.getMonthShiShenZhi(),
+      nayin: eightChar.getMonthNaYin()
+    },
+    day: {
+      gan: eightChar.getDayGan(),
+      zhi: eightChar.getDayZhi(),
+      hideGan: eightChar.getDayHideGan(),
+      shishenGan: '日主', 
+      shishenZhi: eightChar.getDayShiShenZhi(),
+      nayin: eightChar.getDayNaYin()
+    },
+    time: {
+      gan: eightChar.getTimeGan(),
+      zhi: eightChar.getTimeZhi(),
+      hideGan: eightChar.getTimeHideGan(),
+      shishenGan: eightChar.getTimeShiShenGan(),
+      shishenZhi: eightChar.getTimeShiShenZhi(),
+      nayin: eightChar.getTimeNaYin()
+    }
+  };
+
+  // 大运提取
+  const yun = eightChar.getYun(record.gender === '男' ? 1 : 0);
+  const startAge = typeof yun.getStartAge === 'function' ? yun.getStartAge() : yun.getStartYear();
+  const daYunList = yun.getDaYun();
+  let dayunTextList = [];
+  daYunList.forEach(dy => {
+    if (dy.getGanZhi()) {
+      dayunTextList.push(`${dy.getGanZhi()} ${dy.getStartAge()}-${dy.getEndAge()}岁`);
+    }
+  });
+  const dayunListStr = dayunTextList.join('，');
+  const isYangGan = ['甲', '丙', '戊', '庚', '壬'].includes(baziData.year.gan);
+  const isForwardYun = (isYangGan && record.gender === '男') || (!isYangGan && record.gender !== '男');
+  const yunOrderText = isForwardYun ? '顺排' : '逆排';
+  const currentLunar = Lunar.fromDate(new Date());
+
+  // 计算五行力量
+  const wuxingWeights = calculateWuxingWeights(baziData);
+
+  const formattedBazi = `
+【八字排盘】
+
+四柱：
+年柱 【${baziData.year.gan}${baziData.year.zhi}】 藏干【${baziData.year.hideGan.join(', ')}】 十神【天干 ${baziData.year.shishenGan} / 地支 ${baziData.year.shishenZhi.join(', ')}】 纳音【${baziData.year.nayin}】 空亡【${eightChar.getYearXunKong()}】
+月柱 【${baziData.month.gan}${baziData.month.zhi}】 藏干【${baziData.month.hideGan.join(', ')}】 十神【天干 ${baziData.month.shishenGan} / 地支 ${baziData.month.shishenZhi.join(', ')}】 纳音【${baziData.month.nayin}】 空亡【${eightChar.getMonthXunKong()}】
+日柱 【${baziData.day.gan}${baziData.day.zhi}】 藏干【${baziData.day.hideGan.join(', ')}】 十神【日主${GAN_WUXING[baziData.day.gan]} / 地支 ${baziData.day.shishenZhi.join(', ')}】 纳音【${baziData.day.nayin}】 空亡【${eightChar.getDayXunKong()}】 （日主为“${baziData.day.gan}${GAN_WUXING[baziData.day.gan]}”）
+时柱 【${baziData.time.gan}${baziData.time.zhi}】 藏干【${baziData.time.hideGan.join(', ')}】 十神【天干 ${baziData.time.shishenGan} / 地支 ${baziData.time.shishenZhi.join(', ')}】 纳音【${baziData.time.nayin}】 空亡【${eightChar.getTimeXunKong()}】
+命宫：【${eightChar.getMingGong()}】 身宫：【${astrolabe.lordOfBody || '-'}】 胎元：【${eightChar.getTaiYuan()}】
+五行力量统计：木【${wuxingWeights['木']}%】 火【${wuxingWeights['火']}%】 土【${wuxingWeights['土']}%】 金【${wuxingWeights['金']}%】 水【${wuxingWeights['水']}%】
+大运：【${yunOrderText}】 起运年龄【${startAge}】岁
+大运列表：【${dayunListStr}】
+当前流年：【${currentLunar.getYearInGanZhi()}年】
+  `;
+
+  // ========== 拼装紫微十二宫排盘数据 ==========
+  let shengnianSihua = [];
+  astrolabe.palaces.forEach(p => {
+    if (p.majorStars) {
+      p.majorStars.forEach(s => {
+        if (s.mutagen) {
+          shengnianSihua.push(`${s.name}化${s.mutagen}`);
+        }
+      });
+    }
+  });
+  const shengnianSihuaStr = shengnianSihua.length > 0 ? shengnianSihua.join('、') : '无';
+  const bodyPalace = astrolabe.palaces.find(p => p.isBodyPalace);
+  const bodyPalaceName = bodyPalace ? bodyPalace.name : '未知';
+
+  const nominalAge = new Date().getFullYear() - baziLunarObj.getYear() + 1;
+  const currentDaxianPalace = astrolabe.palaces.find(p => {
+    if (p.decadal && p.decadal.range) {
+      return nominalAge >= p.decadal.range[0] && nominalAge <= p.decadal.range[1];
+    }
+    return false;
+  });
+  const daxianText = currentDaxianPalace ?
+    `当前大限落在【${currentDaxianPalace.name}】宫，主星【${currentDaxianPalace.majorStars ? currentDaxianPalace.majorStars.map(s => s.name).join(',') : '无主星'}】，年龄区间【${currentDaxianPalace.decadal.range[0]}】岁至【${currentDaxianPalace.decadal.range[1]}】岁` :
+    '无';
+
+  const liunianPalace = astrolabe.palaces.find(p => p.earthlyBranch === currentLunar.getYearZhi());
+  const liunianPalaceName = liunianPalace ? liunianPalace.name : '未知';
+  const liunianSihuaStr = {
+    '丙': '天同化禄、天机化权、文昌化科、廉贞化忌',
+    '丁': '太阴化禄、天同化权、天府化科、巨门化忌',
+    '戊': '贪狼化禄、太阴化权、右弼化科、天机化忌',
+    '己': '武曲化禄、贪狼化权、天梁化科、文曲化忌',
+    '庚': '太阳化禄、武曲化权、太阴化科、天同化忌',
+    '辛': '巨门化禄、太阳化权、文曲化科、文昌化忌',
+    '壬': '天梁化禄、紫微化权、左辅化科、武曲化忌',
+    '癸': '破军化禄、巨门化权、太阴化科、贪狼化忌',
+    '甲': '廉贞化禄、破军化权、武曲化科、太阳化忌',
+    '乙': '天机化禄、天梁化权、紫微化科、太阴化忌'
+  }[currentLunar.getYearGan()] || '无';
+
+  const palacesListStr = astrolabe.palaces.map(p => {
+    const majors = p.majorStars ? p.majorStars.map(s => s.name + (s.mutagen ? `(生年化${s.mutagen})` : '')).join(',') : '空宫';
+    const luckyStars = [];
+    const badStars = [];
+    
+    const checkAndClassify = (s) => {
+      if (s.type === 'bad') {
+        badStars.push(s.name);
+      } else {
+        luckyStars.push(s.name);
+      }
+    };
+    
+    if (p.minorStars) p.minorStars.forEach(checkAndClassify);
+    if (p.badStars) p.badStars.forEach(checkAndClassify);
+    
+    const minors = luckyStars.length > 0 ? luckyStars.join(',') : '无辅星';
+    const bads = badStars.length > 0 ? badStars.join(',') : '无煞星';
+    
+    return `${p.name}宫：【${p.heavenlyStem}${p.earthlyBranch}】【主星：${majors}】【辅星：${minors}、煞星：${bads}】`;
+  }).join('\n');
+
+  const formattedZiwei = `
+【紫微斗数排盘】
+
+十二宫完整信息：
+${palacesListStr}
+身宫落在：【${bodyPalaceName}】 来因宫：【${astrolabe.comingPalace || '无'}】
+生年四化：【${shengnianSihuaStr}】
+大限：【${daxianText}】
+流年：【当前流年命宫在 ${currentLunar.getYearInGanZhi()} 对应的 ${liunianPalaceName} 宫，流年四化为 ${liunianSihuaStr}】
+  `;
+
+  let timeText = `${record.birthHour.toString().padStart(2, '0')}:${record.birthMinute.toString().padStart(2, '0')} (${record.calendarType === 'solar' ? '阳历' : '阴历'})`;
+  timeText += `${record.baziTrueSolar !== false ? ' (八字真时)' : ' (八字平时)'}`;
+  timeText += `${record.ziweiTrueSolar !== false ? ' (紫微真时)' : ' (紫微平时)'}`;
+
   return {
-    bazi: `${eightChar.getYearGan()}${eightChar.getYearZhi()} ${eightChar.getMonthGan()}${eightChar.getMonthZhi()} ${eightChar.getDayGan()}${eightChar.getDayZhi()} ${eightChar.getTimeGan()}${eightChar.getTimeZhi()}`,
-    ziwei: astrolabeObj,
-    timeText: `${record.birthHour.toString().padStart(2, '0')}:${record.birthMinute.toString().padStart(2, '0')} (${record.calendarType === 'solar' ? '阳历' : '阴历'})${record.baziTrueSolar !== false ? ' (八字真时)' : ' (八字平时)'}${record.ziweiTrueSolar !== false ? ' (紫微真时)' : ' (紫微平时)'}`
+    bazi: formattedBazi,
+    ziwei: formattedZiwei,
+    timeText: timeText
   };
 }
 
@@ -1935,19 +2086,14 @@ function getBaziZiweiForRecord(record) {
 function buildRectifyPrompt(selectedRecords, eventsText) {
   const recordsData = selectedRecords.map((r, i) => {
     const data = getBaziZiweiForRecord(r);
-    const ziweiSummary = data.ziwei.palaces.map(p => {
-      const majors = p.majorStars ? p.majorStars.map(s => s.name + (s.mutagen ? `(生年化${s.mutagen})` : '')).join(',') : '空宫';
-      return `${p.name}宫: ${majors}`;
-    }).join('; ');
-    
     return `
 --- 备选命盘 ${i + 1} ---
 姓名：${r.userName}
 性别：${r.gender}
-出生时间配置：${data.timeText}
-经度：${r.longitude}°E
-八字四柱：${data.bazi}
-紫微斗数主星分布：${ziweiSummary}
+
+${data.bazi}
+
+${data.ziwei}
 `;
   }).join('\n');
 
@@ -2056,5 +2202,47 @@ async function startRectification() {
   } finally {
     btnRectify.textContent = '恭请祖师爷定盘';
     btnRectify.disabled = false;
+  }
+}
+
+// 复制定盘 AI 提示词
+function copyRectifyPrompt() {
+  const checkboxes = document.querySelectorAll('input[name="rectifyRecord"]:checked');
+  if (checkboxes.length < 2) {
+    alert('☯ 复制定盘提示词需要对比不同的命盘。请在第一步中至少勾选 2 个档案！');
+    return;
+  }
+  
+  const eventsText = document.getElementById('rectifyEventsInput').value.trim();
+  if (!eventsText) {
+    alert('☯ 请在第二步中填写一些您人生中的大事线索（如升学、工作变动、结婚、生病开刀等年份），以便生成提示词！');
+    return;
+  }
+  
+  let records = [];
+  try {
+    records = JSON.parse(localStorage.getItem('bazi_ziwei_history') || '[]');
+  } catch (e) {
+    records = [];
+  }
+  
+  const selectedRecords = Array.from(checkboxes).map(cb => records[parseInt(cb.value)]);
+  
+  try {
+    const prompt = buildRectifyPrompt(selectedRecords, eventsText);
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(prompt).then(() => {
+        alert('☯ 定盘详细数据与AI提示词已成功复制到剪贴板！\n您可以直接粘贴给任何网页端AI（如 ChatGPT、Claude、Kimi 等）进行定盘分析。');
+      }).catch(err => {
+        console.error('复制失败: ', err);
+        fallbackCopyText(prompt);
+      });
+    } else {
+      fallbackCopyText(prompt);
+    }
+  } catch (err) {
+    console.error('生成定盘提示词出错:', err);
+    alert('生成定盘提示词出错，请检查浏览器控制台。');
   }
 }
