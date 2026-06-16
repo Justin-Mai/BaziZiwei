@@ -136,11 +136,182 @@ header p {
   box-shadow: 0 8px 32px 0 rgba(212, 175, 55, 0.08);
 }
 
+.top-layout {
+  display: flex;
+  gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto 40px auto;
+  align-items: stretch;
+}
+
 /* 表单输入区 */
 .input-section {
-  max-width: 800px;
-  margin: 0 auto 40px auto;
+  flex: 3;
   padding: 30px;
+}
+
+/* 历史档案区 */
+.history-section {
+  flex: 1.2;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  min-width: 290px;
+}
+
+.history-title {
+  font-family: var(--font-classic);
+  color: var(--gold-color);
+  font-size: 1.2rem;
+  margin-bottom: 15px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+  padding-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 280px;
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.history-list::-webkit-scrollbar {
+  width: 4px;
+}
+.history-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+.history-list::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.2);
+  border-radius: 2px;
+}
+.history-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.4);
+}
+
+.history-empty {
+  color: var(--text-mute);
+  font-size: 0.9rem;
+  text-align: center;
+  margin: auto 0;
+  opacity: 0.6;
+  padding: 20px 0;
+}
+
+.history-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(212, 175, 55, 0.1);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.history-item:hover {
+  background: rgba(212, 175, 55, 0.05);
+  border-color: rgba(212, 175, 55, 0.3);
+}
+
+.history-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.history-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-name {
+  font-family: var(--font-classic);
+  font-weight: bold;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-gender-badge {
+  font-size: 0.72rem;
+  padding: 1px 4px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-weight: bold;
+}
+.history-gender-badge.male {
+  background: rgba(52, 152, 219, 0.2);
+  color: #3498db;
+}
+.history-gender-badge.female {
+  background: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+}
+
+.history-time {
+  font-size: 0.75rem;
+  color: var(--text-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 8px;
+}
+
+.history-btn-del {
+  background: transparent;
+  border: none;
+  color: var(--text-mute);
+  cursor: pointer;
+  padding: 4px;
+  font-size: 0.9rem;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.history-btn-del:hover {
+  color: #e74c3c;
+}
+
+.btn-save-history {
+  background: transparent;
+  border: 1px solid var(--gold-color);
+  color: var(--gold-color);
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-family: var(--font-classic);
+  font-size: 0.95rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  width: 100%;
+}
+
+.btn-save-history:hover {
+  background: var(--gold-gradient);
+  color: #030611;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
 }
 
 .form-row {
@@ -1251,6 +1422,9 @@ header p {
 
 /* 响应式适配 */
 @media (max-width: 1024px) {
+  .top-layout {
+    flex-direction: column;
+  }
   .ziwei-grid {
     aspect-ratio: auto;
     grid-template-columns: repeat(4, 1fr);

@@ -26,116 +26,128 @@
       <p>天人合一 · 八字子平 · 紫微斗数</p>
     </header>
 
-    <!-- 输入资料面板 -->
-    <section class="glass-panel input-section">
-      <!-- 第一行：基本信息 -->
-      <div class="form-row">
-        <!-- 姓名 -->
-        <div class="input-group flex-1">
-          <label for="userName">缘主姓名</label>
-          <input type="text" id="userName" placeholder="请输入您的姓名" value="诸葛乾坤">
-        </div>
-        
-        <!-- 性别 -->
-        <div class="input-group flex-1">
-          <label for="gender">缘主性别</label>
-          <select id="gender">
-            <option value="男">乾造 (男)</option>
-            <option value="女">坤造 (女)</option>
-          </select>
-        </div>
-
-        <!-- 历法切换 -->
-        <div class="input-group flex-1">
-          <label>历法类型</label>
-          <div class="calendar-switch">
-            <button type="button" class="switch-btn active" id="btnSolar">公历 (阳历)</button>
-            <button type="button" class="switch-btn" id="btnLunar">农历 (阴历)</button>
+    <!-- 顶栏布局 (输入与历史记录) -->
+    <div class="top-layout">
+      <!-- 输入资料面板 -->
+      <section class="glass-panel input-section">
+        <!-- 第一行：基本信息 -->
+        <div class="form-row">
+          <!-- 姓名 -->
+          <div class="input-group flex-1">
+            <label for="userName">缘主姓名</label>
+            <input type="text" id="userName" placeholder="请输入您的姓名" value="诸葛乾坤">
+          </div>
+          
+          <!-- 性别 -->
+          <div class="input-group flex-1">
+            <label for="gender">缘主性别</label>
+            <select id="gender">
+              <option value="男">乾造 (男)</option>
+              <option value="女">坤造 (女)</option>
+            </select>
+          </div>
+  
+          <!-- 历法切换 -->
+          <div class="input-group flex-1">
+            <label>历法类型</label>
+            <div class="calendar-switch">
+              <button type="button" class="switch-btn active" id="btnSolar">公历 (阳历)</button>
+              <button type="button" class="switch-btn" id="btnLunar">农历 (阴历)</button>
+            </div>
           </div>
         </div>
-      </div>
-
-      <!-- 第二行：日期与具体时间 -->
-      <div class="form-row">
-        <!-- 日期选择容器 (占flex: 2) -->
-        <div class="date-input-container" style="flex: 2;">
-          <!-- 阳历日期选择 -->
-          <div class="input-group" id="solarInputGroup" style="width: 100%;">
-            <label for="solarDate">出生日期 (公历)</label>
-            <input type="date" id="solarDate" value="1995-10-10">
+  
+        <!-- 第二行：日期与具体时间 -->
+        <div class="form-row">
+          <!-- 日期选择容器 (占flex: 2) -->
+          <div class="date-input-container" style="flex: 2;">
+            <!-- 阳历日期选择 -->
+            <div class="input-group" id="solarInputGroup" style="width: 100%;">
+              <label for="solarDate">出生日期 (公历)</label>
+              <input type="date" id="solarDate" value="1995-10-10">
+            </div>
+  
+            <!-- 阴历输入组合 (当选择农历时显示) -->
+            <div id="lunarInputGroup" style="display: none; width: 100%; gap: 10px;">
+              <div class="input-group" style="flex: 2;">
+                <label for="lunarYear">农历年 (干支)</label>
+                <select id="lunarYear"></select>
+              </div>
+              <div class="input-group" style="flex: 1.2;">
+                <label for="lunarMonth">月份</label>
+                <select id="lunarMonth"></select>
+              </div>
+              <div class="input-group" style="flex: 1.2;">
+                <label for="lunarDay">日期</label>
+                <select id="lunarDay"></select>
+              </div>
+              <div class="input-group" style="flex: 1; min-width: 65px;">
+                <label for="lunarLeap">闰月</label>
+                <select id="lunarLeap">
+                  <option value="false">否</option>
+                  <option value="true">是</option>
+                </select>
+              </div>
+            </div>
           </div>
-
-          <!-- 阴历输入组合 (当选择农历时显示) -->
-          <div id="lunarInputGroup" style="display: none; width: 100%; gap: 10px;">
-            <div class="input-group" style="flex: 2;">
-              <label for="lunarYear">农历年 (干支)</label>
-              <select id="lunarYear"></select>
+  
+          <!-- 具体出生时间 (占flex: 1) -->
+          <div class="input-group" style="flex: 1;">
+            <label for="birthHour">出生具体时间 (北京时间)</label>
+            <div class="time-select-row">
+              <select id="birthHour"></select>
+              <span class="time-label">时</span>
+              <select id="birthMinute"></select>
+              <span class="time-label">分</span>
             </div>
-            <div class="input-group" style="flex: 1.2;">
-              <label for="lunarMonth">月份</label>
-              <select id="lunarMonth"></select>
-            </div>
-            <div class="input-group" style="flex: 1.2;">
-              <label for="lunarDay">日期</label>
-              <select id="lunarDay"></select>
-            </div>
-            <div class="input-group" style="flex: 1; min-width: 65px;">
-              <label for="lunarLeap">闰月</label>
-              <select id="lunarLeap">
-                <option value="false">否</option>
-                <option value="true">是</option>
+          </div>
+        </div>
+  
+        <!-- 第三行：地点与经度 -->
+        <div class="form-row">
+          <!-- 出生省份与城市/区 (占flex: 2) -->
+          <div class="input-group" style="flex: 2;">
+            <label for="birthProvince">出生地点 (省份与城市/区)</label>
+            <div style="display: flex; gap: 12px; width: 100%;">
+              <select id="birthProvince" style="flex: 1;">
+                <option value="">选择省份</option>
+              </select>
+              <select id="birthCity" style="flex: 1;">
+                <option value="">选择地市</option>
               </select>
             </div>
           </div>
-        </div>
-
-        <!-- 具体出生时间 (占flex: 1) -->
-        <div class="input-group" style="flex: 1;">
-          <label for="birthHour">出生具体时间 (北京时间)</label>
-          <div class="time-select-row">
-            <select id="birthHour"></select>
-            <span class="time-label">时</span>
-            <select id="birthMinute"></select>
-            <span class="time-label">分</span>
+  
+          <!-- 经度输入框 (占flex: 1) -->
+          <div class="input-group" style="flex: 1;">
+            <label for="customLongitude">实测经度 (东经°)</label>
+            <input type="number" id="customLongitude" step="0.01" min="0" max="180" value="120.0" placeholder="东经°">
+            <div style="margin-top: 8px; font-size: 0.85em; color: var(--text-main); display: flex; align-items: center; gap: 10px;">
+              <span style="font-weight:bold;">真太阳时校准:</span>
+              <label style="display:inline-flex; align-items:center; cursor:pointer; margin:0; font-weight:normal;">
+                <input type="checkbox" id="baziTrueSolar" checked style="width:auto; margin-right:4px; margin-bottom:0;">八字
+              </label>
+              <label style="display:inline-flex; align-items:center; cursor:pointer; margin:0; font-weight:normal;">
+                <input type="checkbox" id="ziweiTrueSolar" checked style="width:auto; margin-right:4px; margin-bottom:0;">紫微斗数
+              </label>
+            </div>
           </div>
         </div>
-      </div>
-
-      <!-- 第三行：地点与经度 -->
-      <div class="form-row">
-        <!-- 出生省份与城市/区 (占flex: 2) -->
-        <div class="input-group" style="flex: 2;">
-          <label for="birthProvince">出生地点 (省份与城市/区)</label>
-          <div style="display: flex; gap: 12px; width: 100%;">
-            <select id="birthProvince" style="flex: 1;">
-              <option value="">选择省份</option>
-            </select>
-            <select id="birthCity" style="flex: 1;">
-              <option value="">选择地市</option>
-            </select>
-          </div>
+  
+        <div style="margin-top: 30px;">
+          <button type="button" class="btn-submit" id="btnCalculate">开启天机排盘</button>
         </div>
-
-        <!-- 经度输入框 (占flex: 1) -->
-        <div class="input-group" style="flex: 1;">
-          <label for="customLongitude">实测经度 (东经°)</label>
-          <input type="number" id="customLongitude" step="0.01" min="0" max="180" value="120.0" placeholder="东经°">
-          <div style="margin-top: 8px; font-size: 0.85em; color: var(--text-main); display: flex; align-items: center; gap: 10px;">
-            <span style="font-weight:bold;">真太阳时校准:</span>
-            <label style="display:inline-flex; align-items:center; cursor:pointer; margin:0; font-weight:normal;">
-              <input type="checkbox" id="baziTrueSolar" checked style="width:auto; margin-right:4px; margin-bottom:0;">八字
-            </label>
-            <label style="display:inline-flex; align-items:center; cursor:pointer; margin:0; font-weight:normal;">
-              <input type="checkbox" id="ziweiTrueSolar" checked style="width:auto; margin-right:4px; margin-bottom:0;">紫微斗数
-            </label>
-          </div>
+      </section>
+  
+      <!-- 历史档案面板 -->
+      <aside class="glass-panel history-section">
+        <h3 class="history-title">📂 历史档案</h3>
+        <div class="history-list" id="historyList">
+          <div class="history-empty">暂无保存记录</div>
         </div>
-      </div>
-
-      <div style="margin-top: 30px;">
-        <button type="button" class="btn-submit" id="btnCalculate">开启天机排盘</button>
-      </div>
-    </section>
+        <button type="button" class="btn-save-history" id="btnSaveHistory">保存当前排盘</button>
+      </aside>
+    </div>
 
     <!-- 结果排盘展示区 -->
     <section class="result-section" id="resultSection">

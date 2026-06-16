@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initLocationSelectors();
   initCanvas();
   bindEvents();
-  
+
   // 载入本地配置
   const savedKey = localStorage.getItem('gemini_api_key');
   const savedUrl = localStorage.getItem('gemini_api_url');
@@ -234,6 +234,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // 载入历史记录
+  loadHistory();
 });
 
 // 初始化日期下拉框 (主要针对农历输入)
@@ -343,10 +346,10 @@ function initLocationSelectors() {
 function initCanvas() {
   const canvas = document.getElementById('starfield');
   const ctx = canvas.getContext('2d');
-  
+
   let width = canvas.width = window.innerWidth;
   let height = canvas.height = window.innerHeight;
-  
+
   window.addEventListener('resize', () => {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
@@ -354,7 +357,7 @@ function initCanvas() {
 
   const stars = [];
   const starCount = 100;
-  
+
   for (let i = 0; i < starCount; i++) {
     stars.push({
       x: Math.random() * width,
@@ -368,28 +371,28 @@ function initCanvas() {
   function draw() {
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = '#ffffff';
-    
+
     stars.forEach(star => {
       ctx.globalAlpha = star.alpha;
       ctx.beginPath();
       ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
       ctx.fill();
-      
+
       // 缓动星光
       star.alpha += (Math.random() - 0.5) * 0.05;
       if (star.alpha < 0) star.alpha = 0;
       if (star.alpha > 1) star.alpha = 1;
-      
+
       star.y -= star.speed;
       if (star.y < 0) {
         star.y = height;
         star.x = Math.random() * width;
       }
     });
-    
+
     requestAnimationFrame(draw);
   }
-  
+
   draw();
 }
 
@@ -405,7 +408,7 @@ function getEquationOfTime(date) {
 
   // 均时差近似计算公式 (以度数计，转化为弧度)
   const B = 2 * Math.PI * (d - 81) / 365.24;
-  
+
   // 均时差 (分钟)
   const eot = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
   return eot;
@@ -414,16 +417,16 @@ function getEquationOfTime(date) {
 function getTrueSolarTime(date, longitude) {
   // 经度时差：每度相差4分钟，以北京时间 120°E 为准
   const longitudeDiffMinutes = (longitude - 120.0) * 4.0;
-  
+
   // 均时差
   const eotMinutes = getEquationOfTime(date);
-  
+
   // 总时差修正
   const totalOffsetMinutes = longitudeDiffMinutes + eotMinutes;
-  
+
   // 得到真太阳时对象
   const trueTime = new Date(date.getTime() + totalOffsetMinutes * 60 * 1000);
-  
+
   return {
     trueTime: trueTime,
     longitudeDiff: longitudeDiffMinutes,
@@ -464,7 +467,7 @@ function bindEvents() {
     btn.addEventListener('click', (e) => {
       tabBtns.forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      
+
       e.target.classList.add('active');
       const targetId = e.target.getAttribute('data-tab');
       document.getElementById(targetId).classList.add('active');
@@ -479,7 +482,7 @@ function bindEvents() {
     const btnSendChat = document.getElementById('btnSendChat');
     const btnConfigToggle = document.getElementById('btnConfigToggle');
     const apiConfigPanel = document.getElementById('apiConfigPanel');
-    
+
     if (url) {
       localStorage.setItem('gemini_api_url', url);
     } else {
@@ -496,7 +499,7 @@ function bindEvents() {
         btnSendChat.disabled = false;
       }
       alert('配置已安全保存至本地！');
-      
+
       // 保存成功后自动折叠面板
       if (apiConfigPanel) apiConfigPanel.style.display = 'none';
       if (btnConfigToggle) btnConfigToggle.classList.remove('active');
@@ -538,6 +541,11 @@ function bindEvents() {
       copyReportPrompt();
     });
   }
+
+  // 保存历史记录
+  document.getElementById('btnSaveHistory').addEventListener('click', () => {
+    saveCurrentRecord();
+  });
 }
 
 // 7. 命理计算主流程
@@ -552,11 +560,11 @@ function performDivination() {
   const longitude = parseFloat(document.getElementById('customLongitude').value) || 120.0;
   const baziTrueSolar = document.getElementById('baziTrueSolar').checked;
   const ziweiTrueSolar = document.getElementById('ziweiTrueSolar').checked;
-  
+
   let lunarObj = null;
   let solarObj = null;
   let baseDate = null;
-  
+
   try {
     if (calendarType === 'solar') {
       const solarDateStr = document.getElementById('solarDate').value;
@@ -571,12 +579,12 @@ function performDivination() {
       const m = parseInt(document.getElementById('lunarMonth').value);
       const d = parseInt(document.getElementById('lunarDay').value);
       const leap = document.getElementById('lunarLeap').value === 'true';
-      
+
       const flatLunar = Lunar.fromYmd(y, leap ? -m : m, d);
       const flatSolar = flatLunar.getSolar();
       baseDate = new Date(flatSolar.getYear(), flatSolar.getMonth() - 1, flatSolar.getDay(), hour, minute, 0);
     }
-    
+
     // 经度与均时差校准得出真太阳时
     const calib = getTrueSolarTime(baseDate, longitude);
     const trueTime = calib.trueTime;
@@ -617,14 +625,14 @@ function performDivination() {
     // 更新时辰索引
     const baziHour = baziTrueSolar ? trueTime.getHours() : baseDate.getHours();
     const baziTimeIndex = Math.floor(((baziHour + 1) % 24) / 2);
-    
+
     const ziweiHour = ziweiTrueSolar ? trueTime.getHours() : baseDate.getHours();
     const ziweiTimeIndex = Math.floor(((ziweiHour + 1) % 24) / 2);
-    
+
     // 渲染真太阳时校准信息卡
     const formatDateTime = (date) => {
       const pad = n => n.toString().padStart(2, '0');
-      return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
     };
 
     if (baziTrueSolar || ziweiTrueSolar) {
@@ -661,7 +669,7 @@ function performDivination() {
         gan: eightChar.getDayGan(),
         zhi: eightChar.getDayZhi(),
         hideGan: eightChar.getDayHideGan(),
-        shishenGan: '日主', 
+        shishenGan: '日主',
         shishenZhi: eightChar.getDayShiShenZhi(),
         nayin: eightChar.getDayNaYin()
       },
@@ -713,7 +721,7 @@ function performDivination() {
     // 显示结果区
     document.getElementById('resultSection').style.display = 'block';
     document.getElementById('aiSection').style.display = 'flex';
-    
+
     // 滚动到结果区域
     document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
 
@@ -765,7 +773,7 @@ function calculateWuxingWeights(bazi) {
   for (let key in score) {
     percentage[key] = Math.round((score[key] / total) * 100);
   }
-  
+
   return percentage;
 }
 
@@ -968,7 +976,7 @@ function renderZiweiGrid(astrolabe) {
   grid.innerHTML = '';
 
   const bazi = lastCalculatedData.bazi;
-  
+
   // 计算本命天干四化
   const SIHUA_TABLE = {
     '甲': { '禄': '廉贞', '权': '破军', '科': '武曲', '忌': '太阳' },
@@ -988,7 +996,7 @@ function renderZiweiGrid(astrolabe) {
   // 1. 创建中宫
   const centerCell = document.createElement('div');
   centerCell.className = 'palace-center';
-  
+
   // 中宫文字信息，加入四化星展示
   centerCell.innerHTML = `
     <div class="center-title">${lastCalculatedData.userName}</div>
@@ -1015,7 +1023,7 @@ function renderZiweiGrid(astrolabe) {
   const ZHI_LIST = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
   const birthZhi = bazi.year.zhi;
   const isMale = lastCalculatedData.gender === '男';
-  
+
   // 2. 绘制 12 宫位
   astrolabe.palaces.forEach((palace) => {
     const cell = document.createElement('div');
@@ -1040,7 +1048,7 @@ function renderZiweiGrid(astrolabe) {
     // 流年太岁永远以出生年支所在的宫位为1岁，顺行。
     const birthZhiIdx = ZHI_LIST.indexOf(birthZhi);
     const palaceZhiIdx = ZHI_LIST.indexOf(branch);
-    
+
     const liuNianStep = (palaceZhiIdx - birthZhiIdx + 12) % 12;
     const liuNianStart = liuNianStep + 1;
     const liuNianAges = [];
@@ -1055,7 +1063,7 @@ function renderZiweiGrid(astrolabe) {
     const group2 = ['申', '子', '辰'];
     const group3 = ['巳', '酉', '丑'];
     const group4 = ['亥', '卯', '未'];
-    
+
     if (isMale) {
       if (group1.includes(birthZhi)) xiaoXianStartZhi = '辰';
       else if (group2.includes(birthZhi)) xiaoXianStartZhi = '戌';
@@ -1067,7 +1075,7 @@ function renderZiweiGrid(astrolabe) {
       else if (group3.includes(birthZhi)) xiaoXianStartZhi = '丑';
       else if (group4.includes(birthZhi)) xiaoXianStartZhi = '未';
     }
-    
+
     const sIdx = ZHI_LIST.indexOf(xiaoXianStartZhi);
     let xiaoXianStep = 0;
     if (isMale) {
@@ -1228,7 +1236,7 @@ function showPalaceDetails(palace) {
   detailStars.textContent = `星曜分布：` + (allStars.length > 0 ? allStars.join('、') : '空宫 (无主星/辅星)');
 
   if (starDescs.length > 0) {
-    detailBody.innerHTML = starDescs.map(d => `<p style="margin-bottom:12px">${d}</p>`).join('') + 
+    detailBody.innerHTML = starDescs.map(d => `<p style="margin-bottom:12px">${d}</p>`).join('') +
       `<p style="color:var(--text-mute); font-size:0.85rem; border-top:1px dashed rgba(255,255,255,0.05); padding-top:8px;">提示：除主星外，若有三方四正的吉星扶持（如左辅右弼、文昌文曲），能降低负面影响，反之遇到擎羊、陀罗等煞星则多增波折纠纷。</p>`;
   } else {
     // 空宫或无对应解释
@@ -1292,7 +1300,7 @@ function buildDivinationPrompt() {
 
   // 拼装紫微十二宫排盘数据
   const astrolabe = lastCalculatedData.ziwei;
-  
+
   // 生年四化
   let shengnianSihua = [];
   astrolabe.palaces.forEach(p => {
@@ -1318,8 +1326,8 @@ function buildDivinationPrompt() {
     }
     return false;
   });
-  const daxianText = currentDaxianPalace ? 
-    `当前大限落在【${currentDaxianPalace.name}】宫，主星【${currentDaxianPalace.majorStars ? currentDaxianPalace.majorStars.map(s => s.name).join(',') : '无主星'}】，年龄区间【${currentDaxianPalace.decadal.range[0]}】岁至【${currentDaxianPalace.decadal.range[1]}】岁` : 
+  const daxianText = currentDaxianPalace ?
+    `当前大限落在【${currentDaxianPalace.name}】宫，主星【${currentDaxianPalace.majorStars ? currentDaxianPalace.majorStars.map(s => s.name).join(',') : '无主星'}】，年龄区间【${currentDaxianPalace.decadal.range[0]}】岁至【${currentDaxianPalace.decadal.range[1]}】岁` :
     '无';
 
   // 计算流年命宫与流年四化
@@ -1340,11 +1348,11 @@ function buildDivinationPrompt() {
 
   const palacesListStr = astrolabe.palaces.map(p => {
     const majors = p.majorStars ? p.majorStars.map(s => s.name + (s.mutagen ? `(生年化${s.mutagen})` : '')).join(',') : '空宫';
-    
+
     // 收集辅吉星与煞星，根据其 type 进行精准归类
     const luckyStars = [];
     const badStars = [];
-    
+
     const checkAndClassify = (s) => {
       if (s.type === 'bad') {
         badStars.push(s.name);
@@ -1352,13 +1360,13 @@ function buildDivinationPrompt() {
         luckyStars.push(s.name);
       }
     };
-    
+
     if (p.minorStars) p.minorStars.forEach(checkAndClassify);
     if (p.badStars) p.badStars.forEach(checkAndClassify);
-    
+
     const minors = luckyStars.length > 0 ? luckyStars.join(',') : '无辅星';
     const bads = badStars.length > 0 ? badStars.join(',') : '无煞星';
-    
+
     return `${p.name}宫：【${p.heavenlyStem}${p.earthlyBranch}】【主星：${majors}】【辅星：${minors}、煞星：${bads}】`;
   }).join('\n');
 
@@ -1445,14 +1453,14 @@ async function generateAiReport() {
     const responseText = await callGeminiApi(apiKey, chatHistory);
     // 渲染 Markdown
     const htmlReport = marked.parse(responseText);
-    
+
     // 清除刚才的“做法中”消息，并推入正式回复
     const chatBox = document.getElementById('chatBox');
     chatBox.removeChild(chatBox.lastChild); // 移去临时提示
-    
+
     appendChatMessage('assistant', htmlReport, true);
     chatHistory.push({ role: 'model', parts: [{ text: responseText }] });
-    
+
   } catch (err) {
     console.error(err);
     appendChatMessage('assistant', '（祖师爷做法受阻，天机被遮蔽。请检查您的 Gemini API Key 是否有效，或网络是否通畅。）');
@@ -1474,7 +1482,7 @@ function copyReportPrompt() {
       alert('排盘提示词内容为空，请重新排盘。');
       return;
     }
-    
+
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(prompt).then(() => {
         alert('☯ 盘面详细数据与AI提示词已成功复制到剪贴板！\n您可以直接粘贴给任何网页端AI（如 ChatGPT、Claude、Kimi 等）进行深度合参分析。');
@@ -1516,7 +1524,7 @@ async function sendChatMessage() {
   const apiKey = document.getElementById('apiKey').value.trim();
   const inputEl = document.getElementById('chatInput');
   const text = inputEl.value.trim();
-  
+
   if (!text || !apiKey || !lastCalculatedData) return;
 
   inputEl.value = '';
@@ -1532,7 +1540,7 @@ async function sendChatMessage() {
     const responseText = await callGeminiApi(apiKey, chatHistory);
     const chatBox = document.getElementById('chatBox');
     chatBox.removeChild(chatBox.lastChild); // 移除等待提示
-    
+
     const htmlReply = marked.parse(responseText);
     appendChatMessage('assistant', htmlReply, true);
     chatHistory.push({ role: 'model', parts: [{ text: responseText }] });
@@ -1549,12 +1557,12 @@ async function callGeminiApi(apiKey, history) {
   // 使用标准的 gemini-2.5-flash
   let baseUrl = localStorage.getItem('gemini_api_url') || 'https://generativelanguage.googleapis.com';
   baseUrl = baseUrl.replace(/\/+$/, ''); // 移除末尾斜杠
-  
+
   let url = `${baseUrl}/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
   if (baseUrl.includes('generateContent')) {
     url = `${baseUrl}?key=${apiKey}`;
   }
-  
+
   // 转换成 API 要求的 contents 数组格式
   const response = await fetch(url, {
     method: 'POST',
@@ -1583,14 +1591,14 @@ function appendChatMessage(sender, content, isHtml = false) {
   const chatBox = document.getElementById('chatBox');
   const msgDiv = document.createElement('div');
   msgDiv.className = `chat-msg ${sender}`;
-  
+
   const senderLabel = sender === 'assistant' ? 'AI 祖师爷' : '缘主';
-  
+
   msgDiv.innerHTML = `
     <div class="msg-sender">${senderLabel}</div>
     <div class="msg-bubble">${isHtml ? content : escapeHtml(content)}</div>
   `;
-  
+
   chatBox.appendChild(msgDiv);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
@@ -1599,4 +1607,214 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// ==================== 历史记录管理 ====================
+// 载入历史记录
+function loadHistory() {
+  const historyList = document.getElementById('historyList');
+  if (!historyList) return;
+
+  let records = [];
+  try {
+    records = JSON.parse(localStorage.getItem('bazi_ziwei_history') || '[]');
+  } catch (e) {
+    records = [];
+  }
+
+  if (records.length === 0) {
+    historyList.innerHTML = '<div class="history-empty">暂无保存记录</div>';
+    return;
+  }
+
+  historyList.innerHTML = '';
+  records.forEach((record, index) => {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+
+    let timeText = '';
+    if (record.calendarType === 'solar') {
+      timeText = `${record.solarDate} ${record.birthHour.toString().padStart(2, '0')}:${record.birthMinute.toString().padStart(2, '0')}`;
+    } else {
+      timeText = `农历 ${record.lunarYear}年${record.lunarMonth}月${record.lunarDay}日 ${record.birthHour.toString().padStart(2, '0')}:${record.birthMinute.toString().padStart(2, '0')}`;
+    }
+
+    const baziSolarIcon = record.baziTrueSolar !== false ? '✔' : '×';
+    const ziweiSolarIcon = record.ziweiTrueSolar !== false ? '✔' : '×';
+
+    item.innerHTML = `
+      <div class="history-info" onclick="loadHistoryRecord(${index})">
+        <div class="history-name-row">
+          <span class="history-name">${escapeHtml(record.userName)}</span>
+          <span class="history-gender-badge ${record.gender === '男' ? 'male' : 'female'}">${record.gender === '男' ? '乾' : '坤'}</span>
+        </div>
+        <div class="history-time" title="${timeText}">${timeText}</div>
+        <div style="font-size:0.7rem; color:var(--gold-color); margin-top:3px; opacity:0.85;">
+          真太阳时: 八字${baziSolarIcon} 紫微${ziweiSolarIcon}
+        </div>
+      </div>
+      <div class="history-actions">
+        <button class="history-btn-del" onclick="deleteHistoryRecord(event, ${index})" title="删除">🗑️</button>
+      </div>
+    `;
+    historyList.appendChild(item);
+  });
+}
+
+// 保存当前排盘记录
+function saveCurrentRecord() {
+  const userName = document.getElementById('userName').value.trim() || '有缘人';
+  const gender = document.getElementById('gender').value;
+  const birthHour = parseInt(document.getElementById('birthHour').value) || 0;
+  const birthMinute = parseInt(document.getElementById('birthMinute').value) || 0;
+  const province = document.getElementById('birthProvince').value;
+  const city = document.getElementById('birthCity').value;
+  const longitude = parseFloat(document.getElementById('customLongitude').value) || 120.0;
+  const baziTrueSolar = document.getElementById('baziTrueSolar').checked;
+  const ziweiTrueSolar = document.getElementById('ziweiTrueSolar').checked;
+
+  const record = {
+    userName,
+    gender,
+    calendarType,
+    birthHour,
+    birthMinute,
+    province,
+    city,
+    longitude,
+    baziTrueSolar,
+    ziweiTrueSolar,
+    savedAt: new Date().getTime()
+  };
+
+  if (calendarType === 'solar') {
+    record.solarDate = document.getElementById('solarDate').value;
+    if (!record.solarDate) {
+      alert('请选择阳历出生日期后再保存！');
+      return;
+    }
+  } else {
+    record.lunarYear = document.getElementById('lunarYear').value;
+    record.lunarMonth = document.getElementById('lunarMonth').value;
+    record.lunarDay = document.getElementById('lunarDay').value;
+    record.lunarLeap = document.getElementById('lunarLeap').value;
+  }
+
+  let records = [];
+  try {
+    records = JSON.parse(localStorage.getItem('bazi_ziwei_history') || '[]');
+  } catch (e) {
+    records = [];
+  }
+
+  const existingIndex = records.findIndex(r =>
+    r.userName === record.userName &&
+    r.gender === record.gender &&
+    r.calendarType === record.calendarType &&
+    r.birthHour === record.birthHour &&
+    r.birthMinute === record.birthMinute &&
+    r.longitude === record.longitude &&
+    r.baziTrueSolar === record.baziTrueSolar &&
+    r.ziweiTrueSolar === record.ziweiTrueSolar &&
+    (r.calendarType === 'solar' ? r.solarDate === record.solarDate : (r.lunarYear === record.lunarYear && r.lunarMonth === record.lunarMonth && r.lunarDay === record.lunarDay && r.lunarLeap === record.lunarLeap))
+  );
+
+  if (existingIndex > -1) {
+    records.splice(existingIndex, 1);
+  }
+
+  records.unshift(record);
+  localStorage.setItem('bazi_ziwei_history', JSON.stringify(records));
+  loadHistory();
+  alert(`☯ 【${userName}】的排盘记录已成功保存到历史档案！`);
+}
+
+// 载入历史记录到输入框并排盘
+function loadHistoryRecord(index) {
+  let records = [];
+  try {
+    records = JSON.parse(localStorage.getItem('bazi_ziwei_history') || '[]');
+  } catch (e) {
+    records = [];
+  }
+
+  const record = records[index];
+  if (!record) return;
+
+  document.getElementById('userName').value = record.userName;
+  document.getElementById('gender').value = record.gender;
+
+  calendarType = record.calendarType;
+  const btnSolar = document.getElementById('btnSolar');
+  const btnLunar = document.getElementById('btnLunar');
+  const solarGroup = document.getElementById('solarInputGroup');
+  const lunarGroup = document.getElementById('lunarInputGroup');
+
+  if (calendarType === 'solar') {
+    btnSolar.classList.add('active');
+    btnLunar.classList.remove('active');
+    solarGroup.style.display = 'flex';
+    lunarGroup.style.display = 'none';
+    document.getElementById('solarDate').value = record.solarDate;
+  } else {
+    btnLunar.classList.add('active');
+    btnSolar.classList.remove('active');
+    solarGroup.style.display = 'none';
+    lunarGroup.style.display = 'flex';
+
+    document.getElementById('lunarYear').value = record.lunarYear;
+    document.getElementById('lunarMonth').value = record.lunarMonth;
+    document.getElementById('lunarDay').value = record.lunarDay;
+    document.getElementById('lunarLeap').value = record.lunarLeap || 'false';
+  }
+
+  document.getElementById('birthHour').value = record.birthHour;
+  document.getElementById('birthMinute').value = record.birthMinute;
+
+  if (record.province) {
+    document.getElementById('birthProvince').value = record.province;
+
+    // 手动执行二级城市联动加载逻辑
+    const provSelect = document.getElementById('birthProvince');
+    const citySelect = document.getElementById('birthCity');
+    const lngInput = document.getElementById('customLongitude');
+
+    citySelect.innerHTML = '<option value="">选择地市</option>';
+    const cities = PROVINCE_CITY_DB[record.province];
+    for (let city in cities) {
+      let opt = document.createElement('option');
+      opt.value = cities[city];
+      opt.textContent = `${city} (${cities[city]}°E)`;
+      citySelect.appendChild(opt);
+    }
+
+    if (record.city) {
+      citySelect.value = record.city;
+    }
+  }
+
+  document.getElementById('customLongitude').value = record.longitude;
+  document.getElementById('baziTrueSolar').checked = record.baziTrueSolar !== false;
+  document.getElementById('ziweiTrueSolar').checked = record.ziweiTrueSolar !== false;
+
+  setTimeout(() => {
+    performDivination();
+  }, 100);
+}
+
+// 删除历史记录
+function deleteHistoryRecord(event, index) {
+  event.stopPropagation();
+  if (!confirm('确定要删除这条排盘记录吗？')) return;
+
+  let records = [];
+  try {
+    records = JSON.parse(localStorage.getItem('bazi_ziwei_history') || '[]');
+  } catch (e) {
+    records = [];
+  }
+
+  records.splice(index, 1);
+  localStorage.setItem('bazi_ziwei_history', JSON.stringify(records));
+  loadHistory();
 }
