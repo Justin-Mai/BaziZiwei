@@ -120,6 +120,15 @@
         <div class="input-group" style="flex: 1;">
           <label for="customLongitude">实测经度 (东经°)</label>
           <input type="number" id="customLongitude" step="0.01" min="0" max="180" value="120.0" placeholder="东经°">
+          <div style="margin-top: 8px; font-size: 0.85em; color: var(--text-main); display: flex; align-items: center; gap: 10px;">
+            <span style="font-weight:bold;">真太阳时校准:</span>
+            <label style="display:inline-flex; align-items:center; cursor:pointer; margin:0; font-weight:normal;">
+              <input type="checkbox" id="baziTrueSolar" checked style="width:auto; margin-right:4px; margin-bottom:0;">八字
+            </label>
+            <label style="display:inline-flex; align-items:center; cursor:pointer; margin:0; font-weight:normal;">
+              <input type="checkbox" id="ziweiTrueSolar" checked style="width:auto; margin-right:4px; margin-bottom:0;">紫微斗数
+            </label>
+          </div>
         </div>
       </div>
 

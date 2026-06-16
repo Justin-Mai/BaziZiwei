@@ -396,10 +396,12 @@ function initCanvas() {
 // 6. 均时差与真太阳时计算
 function getEquationOfTime(date) {
   const year = date.getFullYear();
-  const start = new Date(year, 0, 0);
-  const diff = date - start;
+  // 使用 UTC 防止系统本地夏令时导致的跨天误差
+  const start = new Date(Date.UTC(year, 0, 0));
+  const current = new Date(Date.UTC(year, date.getMonth(), date.getDate()));
+  const diff = current - start;
   const oneDay = 1000 * 60 * 60 * 24;
-  const d = Math.floor(diff / oneDay);
+  const d = Math.round(diff / oneDay);
 
   // 均时差近似计算公式 (以度数计，转化为弧度)
   const B = 2 * Math.PI * (d - 81) / 365.24;
@@ -548,6 +550,8 @@ function performDivination() {
   const hour = parseInt(document.getElementById('birthHour').value) || 0;
   const minute = parseInt(document.getElementById('birthMinute').value) || 0;
   const longitude = parseFloat(document.getElementById('customLongitude').value) || 120.0;
+  const baziTrueSolar = document.getElementById('baziTrueSolar').checked;
+  const ziweiTrueSolar = document.getElementById('ziweiTrueSolar').checked;
   
   let lunarObj = null;
   let solarObj = null;
@@ -577,20 +581,45 @@ function performDivination() {
     const calib = getTrueSolarTime(baseDate, longitude);
     const trueTime = calib.trueTime;
 
-    // 重新用真太阳时实例化 Solar 历法对象 (必须精确到小时和分钟以确定时柱天干)
+    // 分别处理八字和紫微斗数的排盘时间
+    let baziCalcTime = new Date(baziTrueSolar ? trueTime.getTime() : baseDate.getTime());
+    let ziweiCalcTime = new Date(ziweiTrueSolar ? trueTime.getTime() : baseDate.getTime());
+
+    // 处理早晚子时：传统紫微斗数与八字中，23:00起即视为次日子时。
+    if (baziCalcTime.getHours() >= 23) {
+      baziCalcTime.setHours(baziCalcTime.getHours() + 1);
+    }
+    if (ziweiCalcTime.getHours() >= 23) {
+      ziweiCalcTime.setHours(ziweiCalcTime.getHours() + 1);
+    }
+
+    // 八字历法对象 (必须精确到小时和分钟以确定时柱天干)
     solarObj = Solar.fromYmdHms(
-      trueTime.getFullYear(),
-      trueTime.getMonth() + 1,
-      trueTime.getDate(),
-      trueTime.getHours(),
-      trueTime.getMinutes(),
+      baziCalcTime.getFullYear(),
+      baziCalcTime.getMonth() + 1,
+      baziCalcTime.getDate(),
+      baziCalcTime.getHours(),
+      baziCalcTime.getMinutes(),
       0
     );
     lunarObj = solarObj.getLunar();
 
-    // 更新时辰索引 (基于真太阳时的小时换算出正确时辰)
-    const trueHour = trueTime.getHours();
-    const trueTimeIndex = Math.floor(((trueHour + 1) % 24) / 2);
+    // 紫微历法对象
+    const ziweiSolarObj = Solar.fromYmdHms(
+      ziweiCalcTime.getFullYear(),
+      ziweiCalcTime.getMonth() + 1,
+      ziweiCalcTime.getDate(),
+      ziweiCalcTime.getHours(),
+      ziweiCalcTime.getMinutes(),
+      0
+    );
+
+    // 更新时辰索引
+    const baziHour = baziTrueSolar ? trueTime.getHours() : baseDate.getHours();
+    const baziTimeIndex = Math.floor(((baziHour + 1) % 24) / 2);
+    
+    const ziweiHour = ziweiTrueSolar ? trueTime.getHours() : baseDate.getHours();
+    const ziweiTimeIndex = Math.floor(((ziweiHour + 1) % 24) / 2);
     
     // 渲染真太阳时校准信息卡
     const formatDateTime = (date) => {
@@ -598,12 +627,16 @@ function performDivination() {
       return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
     };
 
-    document.getElementById('inputStdTime').textContent = formatDateTime(baseDate);
-    document.getElementById('calibLng').textContent = `${longitude.toFixed(2)}°E`;
-    document.getElementById('calibLngDiff').textContent = `${calib.longitudeDiff >= 0 ? '+' : ''}${calib.longitudeDiff.toFixed(1)} 分钟`;
-    document.getElementById('calibEot').textContent = `${calib.eot >= 0 ? '+' : ''}${calib.eot.toFixed(1)} 分钟`;
-    document.getElementById('calibTrueTime').textContent = formatDateTime(trueTime);
-    document.getElementById('timeCalibrationPanel').style.display = 'flex';
+    if (baziTrueSolar || ziweiTrueSolar) {
+      document.getElementById('inputStdTime').textContent = formatDateTime(baseDate);
+      document.getElementById('calibLng').textContent = `${longitude.toFixed(2)}°E`;
+      document.getElementById('calibLngDiff').textContent = `${calib.longitudeDiff >= 0 ? '+' : ''}${calib.longitudeDiff.toFixed(1)} 分钟`;
+      document.getElementById('calibEot').textContent = `${calib.eot >= 0 ? '+' : ''}${calib.eot.toFixed(1)} 分钟`;
+      document.getElementById('calibTrueTime').textContent = formatDateTime(trueTime);
+      document.getElementById('timeCalibrationPanel').style.display = 'flex';
+    } else {
+      document.getElementById('timeCalibrationPanel').style.display = 'none';
+    }
 
     // 2. 解析八字四柱数据 (lunarObj 基于真太阳时时间生成，将自动获取精确时柱干支)
     const eightChar = lunarObj.getEightChar();
@@ -648,18 +681,19 @@ function performDivination() {
     // 3. 解析紫微斗数星盘
     let astrolabeObj = null;
     const isSolar = true;
-    const dateStr = `${solarObj.getYear()}-${solarObj.getMonth()}-${solarObj.getDay()}`;
+    const dateStr = `${ziweiSolarObj.getYear()}-${ziweiSolarObj.getMonth()}-${ziweiSolarObj.getDay()}`;
     const genderKey = gender === '男' ? 'M' : 'F';
     // 实例化星盘
-    astrolabeObj = iztro.astro.bySolar(dateStr, trueTimeIndex, genderKey, isSolar, 'zh-CN');
+    astrolabeObj = iztro.astro.bySolar(dateStr, ziweiTimeIndex, genderKey, isSolar, 'zh-CN');
 
     // 4. 保存最新排盘数据供 AI 交互
+    const solarStr = baziTrueSolar ? '(真太阳时)' : '(平太阳时)';
     lastCalculatedData = {
       userName,
       gender,
-      birthTimeText: SHICHEN_NAMES[trueTimeIndex], // 以真太阳时辰为准
-      solarDate: `${solarObj.getYear()}年${solarObj.getMonth()}月${solarObj.getDay()}日 ${trueTime.getHours()}:${trueTime.getMinutes().toString().padStart(2, '0')} (真太阳时)`,
-      lunarDate: `${lunarObj.getYearInGanZhi()}(${lunarObj.getYearShengXiao()})年${lunarObj.getMonthInChinese()}月${lunarObj.getDayInChinese()} ${SHICHEN_NAMES[trueTimeIndex]}`,
+      birthTimeText: SHICHEN_NAMES[baziTimeIndex], // 以外显八字时辰为准
+      solarDate: `${solarObj.getYear()}年${solarObj.getMonth()}月${solarObj.getDay()}日 ${baziHour}:${(baziTrueSolar ? trueTime : baseDate).getMinutes().toString().padStart(2, '0')} ${solarStr}`,
+      lunarDate: `${lunarObj.getYearInGanZhi()}(${lunarObj.getYearShengXiao()})年${lunarObj.getMonthInChinese()}月${lunarObj.getDayInChinese()} ${SHICHEN_NAMES[baziTimeIndex]}`,
       bazi: baziData,
       wuxing: wuxingWeights,
       ziwei: astrolabeObj,
